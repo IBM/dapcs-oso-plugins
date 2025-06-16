@@ -1,0 +1,18 @@
+#
+# Licensed Materials - Property of IBM
+#
+# (c) Copyright IBM Corp. 2024
+#
+# The source code for this program is not published or otherwise
+# divested of its trade secrets, irrespective of what has been
+# deposited with the U.S. Copyright Office
+#
+
+FROM docker.io/library/oso-builder:latest as builder
+
+COPY pyproject.toml uv.lock ./
+COPY src src
+RUN uv pip install --python=/opt/oso/venv .
+
+FROM docker.io/library/oso-runtime:latest as fireblocks-runtime
+COPY --from=builder --chown=1001:0 /opt/oso /opt/oso

@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: frontend-pod
+spec:
+  containers:
+    - name: frontend_plugin_app
+      image: ${tpl.plugin_image}
+      command:
+        - start-component
+      envFrom:
+        - configMapRef:
+            name: contract.config.map
+            optional: false
+      env:
+        - name: app__name
+          value: "frontend_plugin_app"
+        - name: app__entry
+          value: "oso.framework.plugin:create_app"
+        - name: app__root
+          value: "/app-root"
+        - name: plugin__application
+          value: "fb.plugin:FBPlugin"
+        - name: plugin__mode
+          value: "frontend"
+    - name: frontend_plugin_proxy
+      image: ${tpl.plugin_image}
+      command:
+        - start-proxy
+      envFrom:
+        - configMapRef:
+            name: contract.config.map
+            optional: false
+      env:
+        - name: app__name
+          value: "frontend_plugin_proxy"
+      ports:
+        - containerPort: 4000
+          hostPort: 4000
+    - name: frontend_fireblocks_agent
+      image: ${tpl.fbagent_image}
+      command: [ "/bin/bash", "-c", "--" ]
+      args: [ "echo $REFRESH_TOKEN | base64 -d > /app/dist/.fireblocks-refresh-token && node /app/dist" ]
+      env:
+        - name: CUSTOMER_SERVER_URL
+          value: "http://127.0.0.1:8080/internal"
+        - name: MOBILE_GATEWAY_URL
+          value: "${tpl.mobile_gateway_url}"
+        - name: REFRESH_TOKEN
+          value: "${tpl.refresh_token}"

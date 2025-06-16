@@ -1,0 +1,17 @@
+{
+  "messages": [
+    {
+      "message": {
+        "payloadSignatureData": {
+          "signature": "30992da0432e67d0d7f6d33ddde8548532b3ab7506111a30ab14cf1c702c7c570bb0227779bc1446924dfed6a30af5b098c2fc7ae9e4e3bdc757ea3af556354fb6c8b2732930babb26d3e6a4e269bdccc7b60afdb422c65beaef4234540984476ca4d3c873ab2988500b7264c00c608046314e1a32e775c08906d0eb2174eeeaec06e2d581b6f7cd0ad9c03c521224a2491a22d33776c0f2f07c0ec14da62535e52cc94b2003e88f33b6e9fe8088438f122ce57a902c4fa6b492d6526d9750f2ee415c5d399efdb0e88a8fd99ffadb836ca923c7505aef81256ee12cb99c1df72f0214a1e02fc708892d51411e4a14ebcb41d2af4cddcd41f08ceec791bd0305",
+          "service": "CONFIGURATION_MANAGER"
+        },
+        "payload": "{\"tenantId\":\"bd8c5871-f8cc-5c0b-8eac-9dd8bc30899a\",\"request_type\":\"KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST\",\"algorithm\":\"ECDSA_SECP256K1\",\"signingDeviceKeyId\":\"46c3933b-7d9a-41a4-9d69-696527902c5e\",\"keyId\":\"ab79ca1a-45cc-4cbe-b48c-6b7caa1336cd\",\"messagesToSign\":[{\"message\":\"de31ce2985478fe31840d682a2ca2664da9d7da2d14ab0217dd3a50813a7bf2b\",\"index\":0}],\"requestId\":\"a4963c1f-f2be-4e3c-9a3a-0d2627aaf9bc\",\"txId\":null,\"timestamp\":1734029247,\"version\":\"2.0.0\",\"metadata\":null}"
+      },
+      "transportMetadata": {
+        "requestId": "a4963c1f-f2be-4e3c-9a3a-0d2627aaf9bc",
+        "type": "KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST"
+      }
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+[build-system]
+requires = [
+    "cython >= 3",
+    "setuptools",
+    "setuptools_scm",
+    "wheel",
+]
+build-backend="setuptools.build_meta"
+
+[project]
+dynamic = [ "version" ]
+name = "ibm-oso-fireblocks-plugin"
+requires-python = ">= 3.11"
+dependencies = [
+    "requests",
+    "cryptography",
+    "flask",
+    "jsonschema",
+    "structlog",
+    "werkzeug",
+    "pydantic",
+    "pydantic-settings",
+    "gunicorn>=23.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "commitizen",
+    "pre-commit",
+    "pip-tools",
+    "ruff>=0.9.4",
+    "ibm-oso-framework",
+]
+test = [
+    "pytest",
+    "pytest-mock",
+    "pytest-cov",
+    "requests-mock>=1.12.1",
+]
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version_provider = "scm"
+update_changelog_on_bump = true
+
+[tool.ruff.lint]
+select = ["E", "F"]
+fixable = ["ALL"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.uv.sources]
+ibm-oso-framework = { git = "ssh://git@github.ibm.com/ZaaS/dapcs-oso-framework", branch = "main" }

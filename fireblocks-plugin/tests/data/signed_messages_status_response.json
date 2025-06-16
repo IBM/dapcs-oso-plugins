@@ -1,0 +1,18 @@
+{
+  "statuses": [
+    {
+      "requestId": "a4963c1f-f2be-4e3c-9a3a-0d2627aaf9bc",
+      "response": {
+        "signedMessages": [
+          {
+            "index": 0,
+            "message": "de31ce2985478fe31840d682a2ca2664da9d7da2d14ab0217dd3a50813a7bf2b",
+            "signature": "9702268725126e1831a50ba8b47bbe168866ffdc6b2ff91048f92baff5c80065e410c206246470793a24c743f816b7bd260b9d509d4f7a67db6deb6341b501d6"
+          }
+        ]
+      },
+      "status": "SIGNED",
+      "type": "KEY_LINK_PROOF_OF_OWNERSHIP_RESPONSE"
+    }
+  ]
+}

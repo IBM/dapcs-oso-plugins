@@ -1,0 +1,57 @@
+#
+# Licensed Materials - Property of IBM
+#
+# (c) Copyright IBM Corp. 2024
+#
+# The source code for this program is not published or otherwise
+# divested of its trade secrets, irrespective of what has been
+# deposited with the U.S. Copyright Office
+#
+
+FROM registry.access.redhat.com/ubi9/ubi
+
+RUN dnf install \
+        --assumeyes \
+            https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+RUN dnf install \
+        --assumeyes \
+        python3.12-devel python3.12-pip \
+        cargo rust \
+        libffi libsodium-devel libxslt openssl-devel gcc \
+        nginx openssh-server \
+        findutils gettext glibc neovim procps-ng sudo
+
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
+
+WORKDIR /app-root
+
+COPY pyproject.toml uv.lock .
+COPY src src
+COPY deploy deploy
+
+RUN uv sync
+
+RUN install --directory --mode 0700 --owner 1001 --group 0 \
+    "${HOME}" \
+    "${HOME}/.ssh" \
+    && chown -R 1001:0 /var/run \
+    && chmod -R ug+rwX /var/run \
+    && chown -R 1001:0 /var/lib/nginx \
+    && chmod -R ug+rwX /var/lib/nginx \
+    && chown -R 1001:0 /var/log/nginx \
+    && chmod -R ug+rwX /var/log/nginx \
+    && chown -R 1001:0 /usr/local/etc \
+    && chmod -R ug+rwX /usr/local/etc \
+    ;
+
+RUN ssh-keygen -A 
+RUN chown -R 1001:0 /etc/ssh 
+RUN chmod 0755 /etc/ssh/sshd_config 
+RUN install --mode 0644 --owner 1001 --group 0 $(mktemp) ${HOME}/.ssh/authorized_keys 
+RUN useradd --uid 1001 --gid 0 --home-dir ${HOME} --no-create-home appuser 
+RUN echo 'appuser ALL=(ALL) NOPASSWD: ALL' | EDITOR='tee -a' visudo
+
+EXPOSE 3000
+
+CMD [ "uv", "run", "/app-root/deploy/entrypoint.sh" ]

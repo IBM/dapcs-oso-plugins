@@ -1,0 +1,10 @@
+*.crt
+*.csr
+*.pem
+*.b64
+*.srl
+*.pub
+*-fingerprint
+extensions.cnf
+attestation
+

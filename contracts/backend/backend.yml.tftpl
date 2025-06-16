@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: backend-pod
+spec:
+  containers:
+    - name: backend_plugin_app
+      image: ${tpl.plugin_image}
+      command:
+        - start-component
+      envFrom:
+        - configMapRef:
+            name: contract.config.map
+            optional: false
+      env:
+        - name: app__name
+          value: "backend_plugin_app"
+        - name: app__entry
+          value: "oso.framework.plugin:create_app"
+        - name: app__root
+          value: "/app-root"
+        - name: plugin__application
+          value: "fb.plugin:FBPlugin"
+        - name: plugin__mode
+          value: "backend"
+        - name: PLUGIN__ADDONS__0__TYPE
+          value: "oso.framework.plugin.addons.signing_server"
+        - name: PLUGIN__ADDONS__0__CA_CERT
+          value: ${tpl.grep11_ca}
+        - name: PLUGIN__ADDONS__0__CLIENT_KEY
+          value: ${tpl.grep11_client_key}
+        - name: PLUGIN__ADDONS__0__CLIENT_CERT
+          value: ${tpl.grep11_client_cert}
+        - name: PLUGIN__ADDONS__0__GREP11_ENDPOINT
+          value: ${tpl.grep11_endpoint}
+        - name: PLUGIN__ADDONS__0__KEYSTORE_PATH
+          value: "/data"
+      volumeMounts:
+        - mountPath: /data
+          name: vault_vol
+
+    - name: backend_plugin_proxy
+      image: ${tpl.plugin_image}
+      command:
+        - start-proxy
+      envFrom:
+        - configMapRef:
+            name: contract.config.map
+            optional: false
+      env:
+        - name: app__name
+          value: "backend_plugin_proxy"
+      ports:
+        - containerPort: 4000
+          hostPort: 4000
+%{ if tpl.enable_ep11server }
+    - name: ep11server
+      image: ${tpl.grep11_image}
+      env:
+        - name: PORT
+          value: "9876"
+      volumeMounts:
+        - mountPath: /etc/c16
+          name: cfg-volume
+        - mountPath: /cfg
+          name: srv1-volume
+        - mountPath: /etc/ep11server/ep11server.yaml
+          name: config-volume
+%{ endif }
+  volumes:
+    - hostPath:
+        path: /data
+        type: Directory
+      name: vault_vol
+%{ if tpl.enable_ep11server }
+    - hostPath:
+        path: ./cfg
+        type: Directory
+      name: cfg-volume
+    - hostPath:
+        path: ./srv1
+        type: Directory
+      name: srv1-volume
+    - hostPath:
+        path: ./srv1/grep11server.yaml
+        type: File
+      name: config-volume
+%{ endif }
