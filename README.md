@@ -28,13 +28,46 @@ make build
 ```
 git clone https://github.com/fireblocks/fireblocks-agent.git
 cd fireblocks-agent
-podman build . -t fireblocks-agent:latest 
+podman build . -t fireblocks-agent:latest
 ```
 
 **Note: After the images are successfully built, push the images into the private docker container image registry used for OSO**
 
 ## Contract Generation and Usage
 Refer to the contracts [readme](./contracts/README.md) for installation of the plugin.
+
+## Development
+
+### Global
+Please run the following commands to setup uv and pre-commit hooks
+
+```
+# 1. Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2. Install pre-commit into the uv-managed global environment
+uv tool install pre-commit
+
+# 3. Install git hooks
+pre-commit install
+```
+
+### fireblocks-plugin
+To work on the `fireblocks-plugin`, cd into the `fireblocks-plugin` dir and run
+```
+uv sync --all-extras
+```
+
+And to run tests
+```
+uv run pytest
+```
+
+To run linting and formatting
+```
+uv run ruff check
+uv run ruff format
+```
 
 ## License
 [Apache-2.0](./LICENSE)
