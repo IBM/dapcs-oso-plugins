@@ -1,10 +1,13 @@
+---
 default_install_hook_types:
-- pre-commit
-- commit-msg
+  - pre-commit
+  - commit-msg
+  - post-commit
+  - pre-push
 
 default_stages:
-- pre-commit
-- pre-push
+  - pre-commit
+  - pre-push
 
 default_language_version:
   python: python3.12
@@ -13,7 +16,7 @@ repos:
   - repo: https://github.com/ibm/detect-secrets
     rev: 0.13.1+ibm.62.dss
     hooks:
-      - id: detect-secrets # pragma: whitelist secret
+      - id: detect-secrets  # pragma: whitelist secret
         args:
           [
             --baseline,
@@ -31,6 +34,11 @@ repos:
       - id: end-of-file-fixer
         exclude: ^(Containerfile|.*/requirements*.txt)$
 
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.32.0
+    hooks:
+      - id: yamllint
+
   - repo: https://github.com/commitizen-tools/commitizen
     rev: v3.17.0
     hooks:
@@ -41,8 +49,8 @@ repos:
           - pre-push
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.4
+    rev: v0.12.0
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix]
       - id: ruff-format
