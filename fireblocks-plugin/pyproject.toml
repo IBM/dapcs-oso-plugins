@@ -51,4 +51,4 @@ fixable = ["ALL"]
 convention = "numpy"
 
 [tool.uv.sources]
-ibm-oso-framework = { git = "ssh://git@github.ibm.com/ZaaS/dapcs-oso-framework", branch = "main" }
+ibm-oso-framework = { git = "ssh://git@github.com/IBM/dapcs-oso-framework.git", branch = "keystore-updates" }
