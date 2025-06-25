@@ -22,7 +22,7 @@ pycparser==2.22 ; platform_python_implementation != 'PyPy'
 pydantic==2.11.5
 pydantic-core==2.33.2
 pydantic-settings==2.9.1
-python-dotenv==1.1.0
+python-dotenv==1.1.1
 referencing==0.36.2
 requests==2.32.4
 rpds-py==0.25.1
