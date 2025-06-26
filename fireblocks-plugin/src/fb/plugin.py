@@ -82,9 +82,10 @@ class FBPlugin(PluginProtocol):
             for _ in range(needed_keys):
                 key_id, pub_key_pem = signing_server.generate_key_pair(key_type)
 
+                escaped_pub_key_pem = pub_key_pem.encode("unicode_escape").decode()
                 logger.info(
                     f"Key Type: '{key_type.name}', "
-                    f"Key ID: '{key_id}', Public Key PEM: '{pub_key_pem}'"
+                    f"Key ID: '{key_id}', Public Key PEM: '{escaped_pub_key_pem}'"
                 )
 
         return signing_server
