@@ -41,6 +41,12 @@ variable "INTERNAL_GREP11" {
   description = "Deploy GREP11 in the backend"
 }
 
+variable "MIN_KEYS" {
+  type = number
+  default = 1
+  description = "Number of key generated per key type"
+}
+
 ### INTERNAL GREP11 ###
 
 variable "GREP11_IMAGE" {

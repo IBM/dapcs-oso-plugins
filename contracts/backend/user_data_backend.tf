@@ -13,6 +13,7 @@ resource "local_file" "backend_podman_play" {
     "${path.module}/backend.yml.tftpl",
     { tpl = {
       plugin_image = var.BACKEND_PLUGIN_IMAGE,
+      min_keys = var.MIN_KEYS
       enable_ep11server = var.INTERNAL_GREP11,
       grep11_image = var.GREP11_IMAGE,
       grep11_endpoint = var.INTERNAL_GREP11 ? "localhost:9876" : local.grep11_endpoint,
