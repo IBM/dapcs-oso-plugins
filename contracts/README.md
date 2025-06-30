@@ -15,11 +15,10 @@ The Offline Signing Orchestrator frontend plugin performs import or export opera
 ### Create a functional OSO user
 
 Prereq: A Fireblocks Keylink workspace
+The [fireblocks documentation](https://developers.fireblocks.com/reference/quickstart#step-1-generate-a-csr-file) for this step
 
 1. Create a secret key and CSR for the agent API user using openssl:
-   - `openssl req -newkey rsa:2048 -keyout secure.key -out csr.csr -nodes`
-   - When prompted, enter the organization name
-   - To skip the other attributes when prompted enter `.`
+   - `openssl req -new -newkey rsa:4096 -nodes -keyout fireblocks_secret.key -out fireblocks.csr -subj '/O=<your_organization>'`
 
 1. Using the Fireblocks Console, create an agent API user:
     - Select `Signer` role
@@ -38,7 +37,11 @@ Prereq: A Fireblocks Keylink workspace
     - Copy and save the returned and displayed refresh token in json format. The agent user is now displayed in state `Active` in the Fireblocks Console.
     - Review, and if required edit the saved refresh token json file: Add missing properties and remove surplus properties. Below is expected resulting JSON structure of the refresh token:
 
-    `{"refreshToken":"<hex>","deviceId":"<uuid>", "userId": "<uuid>"}`
+    `{"refreshToken":"<hex>","deviceId":"<uuid>","userId":"<uuid>"}`
+    - You can get its base64 encoded value with
+
+    ` echo '<refreshtokenjson>' | base64 -w0
+    `
 
 ### Generate encrypted workload
 OSO uses the encrypted workload to deploy the frontend (LPAR1) components during the `init` process.  Change to the `frontend` directory, and complete the following steps:
@@ -47,11 +50,10 @@ OSO uses the encrypted workload to deploy the frontend (LPAR1) components during
 
     `cp terraform.tfvars.template terraform.tfvars`
 1. Edit the `terraform.tfvars` file and assign values to the following terraform variables:
-    - `FRONTEND_PLUGIN_IMAGE` - Frontend plugin image with sha256
-    - `FIREBLOCKS_AGENT_IMAGE` - Fireblocks agent image with sha256
+    - `FRONTEND_PLUGIN_IMAGE` - Frontend plugin image with sha256 digest
+    - `FIREBLOCKS_AGENT_IMAGE` - Fireblocks agent image with sha256 digest
     - `MOBILE_GATEWAY_URL` - Mobile gateway url endpoint (default: https://mobile-api.fireblocks.io)
     - `REFRESH_TOKEN` - Refresh token for the API user (base64 encoded JSON)
-    - `SEED` - Passphrase used to optionally encrypt the data being transferred between OSO and Fireblocks. The passphrase must match with the backend.
 1. To generate the encrypted workload, change to the `contracts` directory and run:
 
     `./create-frontend.sh`
@@ -133,32 +135,25 @@ Before deploying workloads with OSO, you must register the signing keys manually
     `oso_cli.py <prefix> operator --cert <admin-cert> --key <admin-key> --cacert <cacert> run --allow_empty`
 1. Monitor the startup logs of the signing server and search for the public keys for both the `ECDSA_SECP256K1` and `EDDSA_ED25519` created keys. Copy and store the key id and the public signing keys. Example:
     ```
-    [INFO    ] Key pair created
-    :                                                                                                                 ECDSA_SECP256K1
-    :
-    [uuid]
-    -----BEGIN PUBLIC KEY-----
-    ...
-    -----END PUBLIC KEY-----
-    [INFO    ] Key pair created
-    :                                                                                                                 EDDSA_ED25519
-    :
-    [uuid]
-    -----BEGIN PUBLIC KEY-----
-    ...
-    -----END PUBLIC KEY-----
+    INFO:fb.plugin:Key Type: 'SECP256K1', Key ID: '...', Public Key PEM: '-----BEGIN PUBLIC KEY-----...-----END PUBLIC KEY-----'
+
+    INFO:fb.plugin:Key Type: 'ED25519', Key ID: '...', Public Key PEM: '-----BEGIN PUBLIC KEY-----...-----END PUBLIC KEY-----'
     ```
 1. OSO iteration should complete successfully
 1. Take a backup of volume `fb-vault-data.qcow2`. For disaster recovery planning purposes, this volume is critical and would need to be restored in order to resume signing operations.
 
 ### Create a validation key
+Here is the [fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/14228779100572-Getting-started-with-Fireblocks-Key-Link#h_01HZ4MK8CMM24JFKVR4Q0AQHGB) on key creation
+
 - Use openssl to create a RSA validation key pair:
   - `openssl genrsa -out validationkey.pem 2048`
   - `openssl rsa -in validationkey.pem -out validationpubkey.pem -outform PEM -pubout`
 - Clone `https://github.com/fireblocks/py-sdk.git`
+- Install with `pip3 install .`
 - Download the example code https://github.com/fireblocks/py-sdk/blob/master/docs/KeyLinkBetaApi.md#create_validation_key to the cloned directory
+- Alternatively use the example in the `../fireblocks-utilities/` directory
 - Adapt the downloaded example code [create_validation_key.py]:
-  - Add the path of the file containing said secret private key for your agent user
+  - Add the path to the file containing the agent user's private key (fireblocks_secret.key)
   - Add the API key of your agent user
   - Add the path of the file containing the public validation key in pem format
 - Run `python create_validation_key.py`
@@ -166,15 +161,16 @@ Before deploying workloads with OSO, you must register the signing keys manually
 
 ### Create the signing keys
 - Download the example code https://github.com/fireblocks/py-sdk/blob/master/docs/KeyLinkBetaApi.md#create_signing_key to the cloned directory
+- Alternatively use the example in the `../fireblocks-utilities/` directory
 - Adapt the downloaded example code [create_signing_key.py]:
-  - Add the user ID of the agent user
-  - Add the path of the file containing said secret private key for your agent user
+  - Add the user ID of the agent user (a.k.a. `API key` of your user)
+  - Add the path of the file containing said secret private key for your agent user (`fireblocks_secret.key`)
   - Add the API key of your agent user
-  - Add the path of the file containing the private validation key in pem format
+  - Add the path of the file containing the private validation key in pem format (`validationkey.pem`)
 - For each of said two signing keys created during the empty signing iteration:
   - Add the key id of the signing key
   - Add the path of the file containing the public signing key
-  - Run `python signing_key.py` twice, for each of the keys created by the OSO backend during the previous empty siging iteration.
+  - Run `python signing_key.py` once for each of the keys created by the OSO backend during the previous empty signing iteration.
 - Run a signing iteration with OSO. (Fireblocks will create two `KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST` messages to be signed by the backend. After these message are signed and received by Fireblocks, the keys can be linked to a Vault account.)
 
 ### Link the signing key to a vault
