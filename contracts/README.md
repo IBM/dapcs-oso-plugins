@@ -154,7 +154,7 @@ The [fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/1
 - Download the example code https://github.com/fireblocks/py-sdk/blob/master/docs/KeyLinkBetaApi.md#create_validation_key to the cloned directory
 - Alternatively use the example in the `../fireblocks-utilities/` directory
 - Adapt the downloaded example code [create_validation_key.py]:
-  - Add the path to the file containing the agent user's private key (fireblocks_secret.key)
+  - Add the path of the file containing the agent user's private key (fireblocks_secret.key)
   - Add the API key of your agent user
   - Add the path of the file containing the public validation key in pem format
 - Run `python create_validation_key.py`
