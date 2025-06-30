@@ -15,6 +15,7 @@ The Offline Signing Orchestrator frontend plugin performs import or export opera
 ### Create a functional OSO user
 
 Prereq: A Fireblocks Keylink workspace
+
 The [fireblocks documentation](https://developers.fireblocks.com/reference/quickstart#step-1-generate-a-csr-file) for this step
 
 1. Create a secret key and CSR for the agent API user using openssl:
@@ -143,7 +144,7 @@ Before deploying workloads with OSO, you must register the signing keys manually
 1. Take a backup of volume `fb-vault-data.qcow2`. For disaster recovery planning purposes, this volume is critical and would need to be restored in order to resume signing operations.
 
 ### Create a validation key
-Here is the [fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/14228779100572-Getting-started-with-Fireblocks-Key-Link#h_01HZ4MK8CMM24JFKVR4Q0AQHGB) on key creation
+The [fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/14228779100572-Getting-started-with-Fireblocks-Key-Link#h_01HZ4MK8CMM24JFKVR4Q0AQHGB) on key creation
 
 - Use openssl to create a RSA validation key pair:
   - `openssl genrsa -out validationkey.pem 2048`
