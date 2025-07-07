@@ -25,7 +25,7 @@ pydantic-settings==2.9.1
 python-dotenv==1.1.0
 referencing==0.36.2
 requests==2.32.4
-rpds-py==0.25.1
+rpds-py==0.26.0
 structlog==25.4.0
 typing-extensions==4.14.0
 typing-inspection==0.4.1
