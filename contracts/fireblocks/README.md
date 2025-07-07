@@ -152,7 +152,6 @@ The [fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/1
 - Clone `https://github.com/fireblocks/py-sdk.git`
 - Install with `pip3 install .`
 - Download the example code https://github.com/fireblocks/py-sdk/blob/master/docs/KeyLinkBetaApi.md#create_validation_key to the cloned directory
-- Alternatively use the example in the `../fireblocks-utilities/` directory
 - Adapt the downloaded example code [create_validation_key.py]:
   - Add the path of the file containing the agent user's private key (fireblocks_secret.key)
   - Add the API key of your agent user
@@ -162,7 +161,6 @@ The [fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/1
 
 ### Create the signing keys
 - Download the example code https://github.com/fireblocks/py-sdk/blob/master/docs/KeyLinkBetaApi.md#create_signing_key to the cloned directory
-- Alternatively use the example in the `../fireblocks-utilities/` directory
 - Adapt the downloaded example code [create_signing_key.py]:
   - Add the user ID of the agent user (a.k.a. `API key` of your user)
   - Add the path of the file containing said secret private key for your agent user (`fireblocks_secret.key`)
