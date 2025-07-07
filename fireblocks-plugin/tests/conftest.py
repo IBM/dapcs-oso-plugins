@@ -359,6 +359,10 @@ def app(
         "PLUGIN__ADDONS__0__EXTRA",
         "test",
     )
+    monkeypatch.setenv(
+        "FB__min_keys",
+        "2",
+    )
 
     _enable_mtls()
     _setup_app()

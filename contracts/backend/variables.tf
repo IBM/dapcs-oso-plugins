@@ -41,6 +41,12 @@ variable "INTERNAL_GREP11" {
   description = "Deploy GREP11 in the backend"
 }
 
+variable "MIN_KEYS" {
+  type = number
+  default = 1
+  description = "Number of key generated per key type"
+}
+
 ### INTERNAL GREP11 ###
 
 variable "GREP11_IMAGE" {
@@ -111,18 +117,18 @@ variable "GREP11_ENDPOINT" {
 
 variable "GREP11_CA" {
   type = string
-  description = "GREP11 CA certificate (in base64)"
+  description = "GREP11 CA certificate (PEM)"
   default = ""
 }
 
 variable "GREP11_CLIENT_KEY" {
   type = string
-  description = "GREP11 client key PKCS8 (in base64)"
+  description = "GREP11 client key PKCS8 (PEM)"
   default = ""
 }
 
 variable "GREP11_CLIENT_CERT" {
   type = string
-  description = "GREP11 client certificate (in base64)"
+  description = "GREP11 client certificate (PEM)"
   default = ""
 }

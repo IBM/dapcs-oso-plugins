@@ -35,6 +35,8 @@ spec:
           value: ${tpl.grep11_endpoint}
         - name: PLUGIN__ADDONS__0__KEYSTORE_PATH
           value: "/data"
+        - name: FB__MIN_KEYS
+          value: ${tpl.min_keys}
       volumeMounts:
         - mountPath: /data
           name: vault_vol

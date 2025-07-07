@@ -15,10 +15,12 @@ import pydantic
 import pytest
 import requests_mock
 
-from fb.plugin import get_signing_api_endpoint
+from fb.plugin import FBPlugin, get_signing_api_endpoint
 from fb.types import MessagesRequest, MessagesStatusRequest, MessagesStatusResponse
 
 from oso.framework.data.types import V1_3
+from oso.framework.plugin import current_oso_plugin_app
+from oso.framework.plugin.addons.signing_server._key import KeyType
 
 
 T = TypeVar("T", bound=pydantic.BaseModel)
@@ -139,6 +141,18 @@ def test_frontend_oso2isv(mode, client):
         MessagesStatusResponse.model_validate_json(response.data)
         == expected_messages_status_response
     )
+
+
+@pytest.mark.parametrize("mode", ["backend"])
+def test_min_keys(mode, client):
+    fb_plugin = current_oso_plugin_app()
+    assert isinstance(fb_plugin, FBPlugin)
+
+    secp256k1_keys = fb_plugin.signing_server.list_keys(key_type=KeyType.SECP256K1)
+    assert len(secp256k1_keys) == 2
+
+    ed25519_keys = fb_plugin.signing_server.list_keys(key_type=KeyType.ED25519)
+    assert len(ed25519_keys) == 2
 
 
 # @pytest.mark.parametrize("mode", ["backend"])

@@ -454,7 +454,7 @@ requires-dist = [
     { name = "cryptography" },
     { name = "flask" },
     { name = "gunicorn", specifier = ">=23.0.0" },
-    { name = "ibm-oso-framework", marker = "extra == 'dev'", git = "ssh://git@github.ibm.com/ZaaS/dapcs-oso-framework?branch=main" },
+    { name = "ibm-oso-framework", marker = "extra == 'dev'", git = "ssh://git@github.com/IBM/dapcs-oso-framework.git?branch=keystore-updates" },
     { name = "jsonschema" },
     { name = "pip-tools", marker = "extra == 'dev'" },
     { name = "pre-commit", marker = "extra == 'dev'" },
@@ -474,7 +474,7 @@ provides-extras = ["dev", "test"]
 [[package]]
 name = "ibm-oso-framework"
 version = "0.0.0"
-source = { git = "ssh://git@github.ibm.com/ZaaS/dapcs-oso-framework?branch=main#5ebb70d6d90e7b2a4186ea6005467a1ce10b26c6" }
+source = { git = "ssh://git@github.com/IBM/dapcs-oso-framework.git?branch=keystore-updates#7838bd707ab4a3b015d4e956f8f8bb97538ea704" }
 dependencies = [
     { name = "asn1crypto" },
     { name = "cryptography" },

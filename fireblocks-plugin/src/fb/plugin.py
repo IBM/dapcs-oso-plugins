@@ -11,8 +11,9 @@
 
 from functools import cached_property
 
-import logging
 import sys
+import json
+import logging
 
 from typing import List, cast, Literal
 
@@ -22,7 +23,7 @@ from werkzeug.exceptions import NotFound
 
 from oso.framework.data.types import V1_3
 from oso.framework.plugin.base import PluginProtocol
-from oso.framework.plugin import current_oso_plugin
+from oso.framework.plugin import current_oso_plugin, current_oso_plugin_app
 from oso.framework.plugin.addons.signing_server import SigningServerAddon, KeyType
 
 
@@ -54,7 +55,8 @@ logger = logging.getLogger(__name__)
 class FBPlugin(PluginProtocol):
     class Config(BaseSettings):
         hot_mode: bool = False
-        model_config = SettingsConfigDict(env_prefix="ISV__")
+        min_keys: int = 1
+        model_config = SettingsConfigDict(env_prefix="FB__")
 
     internalViews = {
         "messagesToSign": CustomerServerMessagesToSignApi(),
@@ -74,16 +76,24 @@ class FBPlugin(PluginProtocol):
             SigningServerAddon, current_oso_plugin().addons["SigningServer"]
         )
 
+        all_keys_info = []
+
         for key_type in KeyType:
             keys = signing_server.list_keys(key_type)
+            needed_keys = current_oso_plugin_app().Config().min_keys - len(keys)
 
-            if len(keys) < 1:
+            for _ in range(needed_keys):
                 key_id, pub_key_pem = signing_server.generate_key_pair(key_type)
 
-                logger.info(
-                    f"Key Type: '{key_type.name}', "
-                    f"Key ID: '{key_id}', Public Key PEM: '{pub_key_pem}'"
+                all_keys_info.append(
+                    {
+                        "key_type": key_type.name,
+                        "key_id": key_id,
+                        "public_key_pem": pub_key_pem,
+                    }
                 )
+
+        logger.info(f"Generated Keys: '{json.dumps(all_keys_info)}'")
 
         return signing_server
 
