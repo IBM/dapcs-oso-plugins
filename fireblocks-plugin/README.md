@@ -4,7 +4,7 @@ The plugin provided within this repository contains the code required to integra
 
 ## Prerequisites
 
-- [Offline Signing Orchestrator v1.4.0 or above](https://www.ibm.com/docs/en/hpdaoso/1.4.x)
+- [Offline Signing Orchestrator v1.3.2 or above](https://www.ibm.com/docs/en/hpdaoso/1.3.0)
 - [Offline Signing Orchestrator Plugin Framework v1.0.0](https://github.com/ibm/dapcs-oso-framework)
 - [Fireblocks Agent](https://github.com/fireblocks/fireblocks-agent)
 - [Docker](https://www.docker.com/)
