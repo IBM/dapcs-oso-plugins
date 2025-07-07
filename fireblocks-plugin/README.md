@@ -32,7 +32,7 @@ docker build -t fireblocks-agent:latest https://github.com/fireblocks/fireblocks
 **Note: After the images are successfully built, push the images into the private docker container image registry used for OSO**
 
 ## Contract Generation and Usage
-Refer to the contracts [readme](./contracts/fireblocks/README.md) for installation of the plugin.
+Refer to the contracts [readme](../contracts/fireblocks/README.md) for installation of the plugin.
 
 ## Development
 
