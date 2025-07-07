@@ -10,7 +10,7 @@ The plugin provided within this repository contains the code required to integra
 - [Docker](https://www.docker.com/)
 
 ## Building
-The fireblocks-agent and dapcs-fireblocks-oso-plugins images are required to be built on an s390x system with Docker. See instructions below.
+The fireblocks-agent and OSO fireblocks-plugin images are required to be built on an s390x system with Docker. See instructions below.
 
 ### Building Fireblocks Plugin
 ```
