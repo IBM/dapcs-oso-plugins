@@ -4,9 +4,9 @@ This repository contains plugins used to integrate third-party systems with the 
 ## Plugins
 
 ### Fireblocks
-Plugin code: [/fireblocks-plugin](./fireblocks-plugin)
+Plugin code: [/fireblocks-plugin/](./fireblocks-plugin)
 
-Contract configuration: [/contracts/fireblocks](./contracts/fireblocks)
+Contract configuration: [/contracts/fireblocks/](./contracts/fireblocks)
 
 ## License
 [Apache-2.0](./LICENSE)
