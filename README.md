@@ -5,6 +5,7 @@ This repository contains plugins used to integrate third-party systems with the 
 
 ### Fireblocks
 Plugin code: `/fireblocks-plugins`
+
 Contract configuration: `/contracts/fireblocks`
 
 ## License
