@@ -79,11 +79,22 @@ class FBPlugin(PluginProtocol):
         all_keys_info = []
 
         for key_type in KeyType:
-            keys = signing_server.list_keys(key_type)
+            try:
+                keys = signing_server.list_keys(key_type)
+
+            except Exception as e:
+                logger.info("Error listing keys")
+                logger.debug(f"Error: {e}")
+
             needed_keys = current_oso_plugin_app().Config().min_keys - len(keys)
 
             for _ in range(needed_keys):
-                key_id, pub_key_pem = signing_server.generate_key_pair(key_type)
+                try:
+                    key_id, pub_key_pem = signing_server.generate_key_pair(key_type)
+
+                except Exception as e:
+                    logger.info("Error generating keys")
+                    logger.debug(f"Error: {e}")
 
                 all_keys_info.append(
                     {
@@ -291,7 +302,12 @@ class FBPlugin(PluginProtocol):
             )
 
         else:
-            component_status = self.signing_server.health_check()
+            try:
+                component_status = self.signing_server.health_check()
+
+            except Exception as e:
+                logger.info("Error getting status")
+                logger.debug(f"Error: {e}")
 
             logger.debug(f"signing server status received: {component_status=}")
 
@@ -314,10 +330,15 @@ class FBPlugin(PluginProtocol):
 
         for message_to_sign in message_envelope.message.payload.messagesToSign:
             # TODO: Continue on error
-            signature = self.signing_server.sign(
-                key_id=message_envelope.message.payload.signingDeviceKeyId,
-                data=bytes.fromhex(message_to_sign.message),
-            )
+            try:
+                signature = self.signing_server.sign(
+                    key_id=message_envelope.message.payload.signingDeviceKeyId,
+                    data=bytes.fromhex(message_to_sign.message),
+                )
+
+            except Exception as e:
+                logger.info("Error signing message")
+                logger.debug(f"Error: {e}")
 
             signed_message = SignedMessage(
                 index=message_to_sign.index,
