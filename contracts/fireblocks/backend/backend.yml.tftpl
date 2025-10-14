@@ -58,12 +58,16 @@ spec:
 %{ if tpl.enable_ep11server }
     - name: ep11server
       image: ${tpl.grep11_image}
+      securityContext:
+        privileged: true
       env:
         - name: PORT
           value: "9876"
       volumeMounts:
+        %{ if !tpl.crypto_pass_enable }
         - mountPath: /etc/c16
           name: cfg-volume
+        %{ endif }
         - mountPath: /cfg
           name: srv1-volume
         - mountPath: /etc/ep11server/ep11server.yaml
@@ -75,10 +79,12 @@ spec:
         type: Directory
       name: vault_vol
 %{ if tpl.enable_ep11server }
+    %{ if !tpl.crypto_pass_enable }
     - hostPath:
         path: ./cfg
         type: Directory
       name: cfg-volume
+    %{ endif }
     - hostPath:
         path: ./srv1
         type: Directory
@@ -88,3 +94,4 @@ spec:
         type: File
       name: config-volume
 %{ endif }
+

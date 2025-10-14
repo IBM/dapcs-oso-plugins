@@ -132,3 +132,10 @@ variable "GREP11_CLIENT_CERT" {
   description = "GREP11 client certificate (PEM)"
   default = ""
 }
+
+variable "CRYPTO_PASSTHROUGH_ENABLEMENT" {
+  type = bool
+  default = false
+  description = "Crypto passthrough enablement configuration"
+}
+
