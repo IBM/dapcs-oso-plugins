@@ -58,8 +58,6 @@ spec:
 %{ if tpl.enable_ep11server }
     - name: ep11server
       image: ${tpl.grep11_image}
-      securityContext:
-        privileged: true
       env:
         - name: PORT
           value: "9876"
@@ -72,6 +70,8 @@ spec:
           name: srv1-volume
         - mountPath: /etc/ep11server/ep11server.yaml
           name: config-volume
+        - name: crypto-device
+          mountPath: /dev/z90crypt
 %{ endif }
   volumes:
     - hostPath:
@@ -93,5 +93,8 @@ spec:
         path: ./srv1/grep11server.yaml
         type: File
       name: config-volume
+    - name: crypto-device
+      hostPath:
+        path: /dev/z90crypt
+        type: CharDevice
 %{ endif }
-
