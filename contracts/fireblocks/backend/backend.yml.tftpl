@@ -70,8 +70,10 @@ spec:
           name: srv1-volume
         - mountPath: /etc/ep11server/ep11server.yaml
           name: config-volume
+        %{ if tpl.crypto_pass_enable }
         - name: crypto-device
           mountPath: /dev/z90crypt
+        %{ endif }
 %{ endif }
   volumes:
     - hostPath:
@@ -93,8 +95,10 @@ spec:
         path: ./srv1/grep11server.yaml
         type: File
       name: config-volume
+    %{ if tpl.crypto_pass_enable }
     - name: crypto-device
       hostPath:
         path: /dev/z90crypt
         type: CharDevice
+    %{ endif }
 %{ endif }

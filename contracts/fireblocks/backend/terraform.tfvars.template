@@ -8,7 +8,7 @@ WORKLOAD_VOL_SEED="fb_vaultseed1"
 
 
 # Crypo passthough Configuration
-# make it true if using internal grep11
+# make it true for crypto-passthrough with internal grep11
 CRYPTO_PASSTHROUGH_ENABLEMENT=false
 
 ### INTERNAL GREP11 ###
