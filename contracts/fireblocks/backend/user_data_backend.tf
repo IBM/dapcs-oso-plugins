@@ -8,6 +8,7 @@
 # deposited with the U.S. Copyright Office
 #
 
+
 resource "local_file" "backend_podman_play" {
   content = templatefile(
     "${path.module}/backend.yml.tftpl",
@@ -15,6 +16,7 @@ resource "local_file" "backend_podman_play" {
       plugin_image = var.BACKEND_PLUGIN_IMAGE,
       min_keys = var.MIN_KEYS
       enable_ep11server = var.INTERNAL_GREP11,
+      crypto_pass_enable = var.CRYPTO_PASSTHROUGH_ENABLEMENT,
       grep11_image = var.GREP11_IMAGE,
       grep11_endpoint = var.INTERNAL_GREP11 ? "localhost:9876" : local.grep11_endpoint,
       grep11_client_cert = base64encode(var.INTERNAL_GREP11 ? tls_locally_signed_cert.client_cert.cert_pem : var.GREP11_CLIENT_CERT),
@@ -30,6 +32,14 @@ resource "local_file" "backend_podman_play" {
     local_file.grep11_ca_cert,
     local_file.grep11_server_key,
     local_file.grep11_server_cert,
+    null_resource.crypto_deps
+  ]
+}
+
+resource "null_resource" "crypto_deps" {
+  count = var.CRYPTO_PASSTHROUGH_ENABLEMENT ? 0 : 1
+
+  depends_on = [
     local_file.c16_client_cfg,
     local_file.c16_ca_cert,
     local_file.c16_client_cert,
@@ -104,28 +114,28 @@ resource "local_file" "grep11_server_cert" {
 }
 
 resource "local_file" "c16_client_cfg" {
-  count = var.INTERNAL_GREP11 ? 1 : 0
+  count = (var.INTERNAL_GREP11 && !var.CRYPTO_PASSTHROUGH_ENABLEMENT) ? 1 : 0
   content = local.c16_cfg
   filename = "${path.module}/backend/cfg/c16client.yaml"
   file_permission = "0664"
 }
 
 resource "local_file" "c16_ca_cert" {
-  count = var.INTERNAL_GREP11 ? 1 : 0
+  count = (var.INTERNAL_GREP11 && !var.CRYPTO_PASSTHROUGH_ENABLEMENT) ? 1 : 0
   content = var.C16_CA_CERT
   filename = "${path.module}/backend/cfg/ca.pem"
   file_permission = "0664"
 }
 
 resource "local_file" "c16_client_cert" {
-  count = var.INTERNAL_GREP11 ? 1 : 0
+  count = (var.INTERNAL_GREP11 && !var.CRYPTO_PASSTHROUGH_ENABLEMENT) ? 1 : 0
   content = var.C16_CLIENT_CERT
   filename = "${path.module}/backend/cfg/c16client.pem"
   file_permission = "0664"
 }
 
 resource "local_file" "c16_client_key" {
-  count = var.INTERNAL_GREP11 ? 1 : 0
+  count = (var.INTERNAL_GREP11 && !var.CRYPTO_PASSTHROUGH_ENABLEMENT) ? 1 : 0
   content = var.C16_CLIENT_KEY
   filename = "${path.module}/backend/cfg/c16client-key.pem"
   file_permission = "0664"
@@ -166,3 +176,4 @@ locals {
       domain: "${var.DOMAIN}"
   EOT
 }
+

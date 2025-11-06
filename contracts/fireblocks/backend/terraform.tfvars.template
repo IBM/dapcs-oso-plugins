@@ -7,6 +7,10 @@ BACKEND_PLUGIN_IMAGE="registry.control23.dap.local/oso/dapcs-fireblocks-oso-plug
 WORKLOAD_VOL_SEED="fb_vaultseed1"
 
 
+# Crypo passthough Configuration
+# make it true for crypto-passthrough with internal grep11
+CRYPTO_PASSTHROUGH_ENABLEMENT=false
+
 ### INTERNAL GREP11 ###
 GREP11_IMAGE="registry.control23.dap.local/oso/grep11-c16@sha256:"
 DOMAIN=""
