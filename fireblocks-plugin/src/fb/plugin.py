@@ -66,6 +66,7 @@ class FBPlugin(PluginProtocol):
     def __init__(self) -> None:
         super().__init__()
         self.config = self.Config()
+        self.error_message = None
 
         self.signed_statuses: List[MessageStatus] = []
         self.pending_messages: List[MessageEnvelope] = []
@@ -300,6 +301,17 @@ class FBPlugin(PluginProtocol):
                 status="OK",
                 errors=[],
             )
+        
+        if self.signing_error:
+            #TODO: give clear definition of error instaed of general message
+            return V1_3.ComponentStatus(
+                status_code=500,
+                status="ERROR",
+                errors=[
+                    "Signing status failed"
+                ],
+            )
+
 
         else:
             try:
@@ -337,6 +349,7 @@ class FBPlugin(PluginProtocol):
                 )
 
             except Exception as e:
+                self.signing_error = True
                 logger.info("Error signing message")
                 logger.debug(f"Error: {e}")
 
