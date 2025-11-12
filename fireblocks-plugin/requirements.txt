@@ -3,31 +3,31 @@
 annotated-types==0.7.0
 attrs==25.3.0
 blinker==1.9.0
-certifi==2025.6.15
+certifi==2025.10.5
 cffi==1.17.1 ; platform_python_implementation != 'PyPy'
-charset-normalizer==3.4.2
+charset-normalizer==3.4.4
 click==8.2.1
 colorama==0.4.6 ; sys_platform == 'win32'
-cryptography==45.0.5
-flask==3.1.1
+cryptography==45.0.7
+flask==3.1.2
 gunicorn==23.0.0
 idna==3.10
 itsdangerous==2.2.0
 jinja2==3.1.6
-jsonschema==4.24.0
-jsonschema-specifications==2025.4.1
+jsonschema==4.25.1
+jsonschema-specifications==2025.9.1
 markupsafe==3.0.2
 packaging==25.0
 pycparser==2.22 ; platform_python_implementation != 'PyPy'
 pydantic==2.11.7
-pydantic-core==2.33.2
+pydantic-core==2.41.5
 pydantic-settings==2.10.1
 python-dotenv==1.1.1
 referencing==0.36.2
-requests==2.32.4
-rpds-py==0.26.0
+requests==2.32.5
+rpds-py==0.28.0
 structlog==25.4.0
-typing-extensions==4.14.1
+typing-extensions==4.15.0
 typing-inspection==0.4.1
 urllib3==2.5.0
 werkzeug==3.1.3
