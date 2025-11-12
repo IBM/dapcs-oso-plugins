@@ -66,7 +66,7 @@ class FBPlugin(PluginProtocol):
     def __init__(self) -> None:
         super().__init__()
         self.config = self.Config()
-        self.error_message = None
+        self.signing_error = None
 
         self.signed_statuses: List[MessageStatus] = []
         self.pending_messages: List[MessageEnvelope] = []
