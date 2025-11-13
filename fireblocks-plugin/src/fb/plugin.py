@@ -308,7 +308,10 @@ class FBPlugin(PluginProtocol):
                 status_code=500,
                 status="ERROR",
                 errors=[
-                    "Signing status failed"
+                   V1_3.Error(
+                        code="SIGNING-FAILED",
+                        message="Backend failed to sign the documents"
+                    )
                 ],
             )
 
