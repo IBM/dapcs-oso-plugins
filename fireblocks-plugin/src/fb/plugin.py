@@ -301,22 +301,19 @@ class FBPlugin(PluginProtocol):
                 status="OK",
                 errors=[],
             )
-        
-        if self.signing_error:
-            #TODO: give clear definition of error instaed of general message
-            return V1_3.ComponentStatus(
-                status_code=500,
-                status="ERROR",
-                errors=[
-                   V1_3.Error(
-                        code="SIGNING-FAILED",
-                        message="Backend failed to sign the documents"
-                    )
-                ],
-            )
-
 
         else:
+            if self.signing_error:
+                return V1_3.ComponentStatus(
+                    status_code=500,
+                    status="ERROR",
+                    errors=[
+                        V1_3.Error(
+                            code="SIGNING-FAILED",
+                            message="Backend failed to sign the documents",
+                        )
+                    ],
+                )
             try:
                 component_status = self.signing_server.health_check()
 
