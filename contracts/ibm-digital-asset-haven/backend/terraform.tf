@@ -12,7 +12,7 @@ terraform {
   required_providers {
     hpcr = {
       source  = "ibm-hyper-protect/hpcr"
-      version = ">= 0.11.0"
+      version = ">= 0.14.0"
     }
   }
 }
