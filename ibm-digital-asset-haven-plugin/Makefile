@@ -17,7 +17,7 @@ TAG ?= latest
 
 build:
 	docker build \
-		. -t dapcs-oso-idah-plugins:latest -t $(REGISTRY)/$(NAMESPACE)/dapcs-oso-idah-plugins:$(TAG) -f Containerfile
+		. -t dapcs-haven-oso--plugins:latest -t $(REGISTRY)/$(NAMESPACE)/dapcs-haven-oso-plugins:$(TAG) -f Containerfile
 
 save:
-	docker save -o OSO-PLUGIN-IMAGE.tar $(REGISTRY)/$(NAMESPACE)/dapcs-oso-idah-plugins:$(TAG)
+	docker save -o OSO-PLUGIN-IMAGE.tar $(REGISTRY)/$(NAMESPACE)/dapcs-haven-oso-plugins:$(TAG)
