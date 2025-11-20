@@ -94,8 +94,7 @@ The encrypted workload will be used within OSO when deploying the backend during
     `./create-backend.sh`
 4. The script prints the resulting `BACKEND_WORKLOADS` section comprising the encrypted backend workload contract section. This can be passed to the system administrator persona to be used to continue with the OSO setup.
 
-Note: You must keep safe and securely backup the workload seed and must ensure to not loose nor forget nor leak the workload seed.
-
+Note: You must keep safe and securely backup the workload seed and must ensure to not loose nor forget nor leak the workload seed. If you want to rotate the workload volume encryption seed, the current seed information must be specified in the `WORKLOAD_VOLUME_PREV_SEED` parameter, and the new seed information must be specified in the `WORKLOAD_VOL_SEED` parameter. If you do not want to rotate the workload volume encryption seed, leave this variable empty.
 
 # Note: Using the frontend and backend encrypted workload contract sections to set up the OSO environment
 The system administrator follows the [instructions in the OSO documentation](https://www.ibm.com/docs/en/hpdaoso/1.4.1?topic=setting-up-environment) to continue with setting up OSO and configuring the contracts. In doing so, the system administrator 
