@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: frontend-pod
+spec:
+  containers:
+    - name: frontend_plugin_app
+      image: ${tpl.plugin_image}
+      command:
+        - start-component
+      envFrom:
+        - configMapRef:
+            name: contract.config.map
+            optional: false
+      env:
+        - name: app__name
+          value: "frontend_plugin_app"
+        - name: app__entry
+          value: "oso.framework.plugin:create_app"
+        - name: app__root
+          value: "/app-root"
+        - name: plugin__application
+          value: "plugin:Plugin"
+        - name: plugin__mode
+          value: "frontend"
+    - name: frontend_plugin_proxy
+      image: ${tpl.plugin_image}
+      command:
+        - start-proxy
+      envFrom:
+        - configMapRef:
+            name: contract.config.map
+            optional: false
+      env:
+        - name: app__name
+          value: "frontend_plugin_proxy"
+      ports:
+        - containerPort: 4000
+          hostPort: 4000
+    - name: hsm-forwarder
+      image: ${tpl.hsmdriver_image}
+      volumeMounts:
+        - mountPath: /tls
+          name: tls_vol
+      command:
+        - hsm-driver
+        - "--proxy-addr"
+        - "${tpl.proxy_address}"
+        - "--ibm-oso-role"
+        - "forwarder"
+        - "--ibm-oso-bind-http"
+        - "0.0.0.0:3002"
+        - "--ca-cert"
+        - "/tls/ca.cert.pem"
+        - "--client-cert"
+        - "/tls/client.cert.pem"
+        - "--client-key"
+        - "/tls/client.key.pem"      
+      env:
+        - name: LOGS_FILTER
+          value: info,hsm_driver=trace,hsm_driver_bin=trace
+  volumes:
+    - hostPath:
+        path: ./tls
+        type: Directory
+      name: tls_vol

@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: backend-pod
+spec:
+  containers:
+    - name: backend_plugin_app
+      image: ${tpl.plugin_image}
+      command:
+        - start-component
+      envFrom:
+        - configMapRef:
+            name: contract.config.map
+            optional: false
+      env:
+        - name: app__name
+          value: "backend_plugin_app"
+        - name: app__entry
+          value: "oso.framework.plugin:create_app"
+        - name: app__root
+          value: "/app-root"
+        - name: plugin__application
+          value: "plugin:Plugin"
+        - name: plugin__mode
+          value: "backend"
+    - name: backend_plugin_proxy
+      image: ${tpl.plugin_image}
+      command:
+        - start-proxy
+      envFrom:
+        - configMapRef:
+            name: contract.config.map
+            optional: false
+      env:
+        - name: app__name
+          value: "backend_plugin_proxy"
+      ports:
+        - containerPort: 4000
+          hostPort: 4000
+    - name: hsm-driver
+      image: ${tpl.hsmdriver_image}
+      volumeMounts:
+      - name: backend_vol
+        mountPath: /var/lib/sqlite.db
+      - name: crypto-device
+        mountPath: /dev/z90crypt
+      command:
+        - "/entrypoint.sh"
+        - "--ibm-oso-role"
+        - "pkcs11"
+        - "--ibm-oso-bind-http"
+        - "0.0.0.0:3003"
+      env:
+        - name: LOGS_FILTER
+          value: "info,hsm_driver=trace,hsm_driver_bin=trace,pkcs11_vendor=trace"
+        - name: DATABASE_PATH
+          value: /var/lib/sqlite.db
+        - name: PKCS11_IBM_OC_MODULE
+          value: "/usr/lib/opencryptoki/libopencryptoki.so"
+        - name: USER_PIN
+          value: ${tpl.user_pin}
+        - name: NEW_USER_PIN
+          value: ${tpl.user_pin}
+        - name: SO_PIN
+          value: ${tpl.so_pin}
+        - name: TOKEN_ID
+          value: "4"
+        - name: TOKEN_LABEL
+          value: "ep11tok"
+  volumes:
+    - hostPath:
+        path: /mnt/data/sqlite.db
+        type: FileOrCreate
+      name: backend_vol
+    - hostPath:
+        path: /dev/z90crypt
+        type: CharDevice
+      name: crypto-device

@@ -19,9 +19,8 @@ resource "local_file" "frontend_podman_play" {
     "${path.module}/frontend.yml.tftpl",
     { tpl = {
       plugin_image = var.FRONTEND_PLUGIN_IMAGE,
-      fbagent_image = var.FIREBLOCKS_AGENT_IMAGE,
-      mobile_gateway_url = var.MOBILE_GATEWAY_URL,
-      refresh_token = var.REFRESH_TOKEN,
+      hsmdriver_image = var.HSMDRIVER_IMAGE,
+      proxy_address = var.PROXY_ADDRESS,
     } },
   )
   filename = "frontend/podman-play.yml"

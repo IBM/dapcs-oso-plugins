@@ -14,6 +14,10 @@
 # limitations under the License.
 #
 
+variable "PREFIX" {
+  type = string
+}
+
 variable "DEBUG" {
   type        = bool
   description = "Create debug contracts, plaintext"
@@ -24,27 +28,37 @@ variable "HPCR_CERT" {
   type        = string
   description = "Public HPCR certificate for contract encryption"
   nullable    = true
-  default     = null
+  default     = ""
 }
 
-variable "FRONTEND_PLUGIN_IMAGE" {
+variable "WORKLOAD_VOL_SEED" {
   type        = string
-  description = "Frontend plugin image name"
+  description = "Workload volume encryption seed"
 }
 
-variable "FIREBLOCKS_AGENT_IMAGE" {
+variable "BACKEND_PLUGIN_IMAGE" {
   type        = string
-  description = "Fireblocks agent image name"
+  description = "Backend plugin image containing registry"
 }
 
-# Fireblocks
-variable "MOBILE_GATEWAY_URL" {
+variable "HSMDRIVER_IMAGE" {
   type        = string
-  description = "Fireblocks mobile gateway url"
-  default     = "https://mobile-api.fireblocks.io"
+  description = "HSM Driver image name"
 }
 
-variable "REFRESH_TOKEN" {
+variable "USER_PIN" {
   type        = string
-  description = "Fireblocks refresh token (in base64)"
+  description = "PKCS11 normal user PIN"
+}
+
+variable "SO_PIN" {
+  type        = string
+  description = "PKCS11 SO PIN"
+  default     = "87654321"
+}
+
+variable "WORKLOAD_VOLUME_PREV_SEED" {
+  type        = string
+  description = "Previous Workload Seed phrase for conductor disk volume."
+  default     = ""
 }

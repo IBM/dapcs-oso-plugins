@@ -15,43 +15,35 @@
 # limitations under the License.
 #
 
-HIPERSOCKET34="${HIPERSOCKET34:-true}"
+. ./common.sh
+exportTF || builtin exit $?
+exportCP || builtin exit $?
 
-FRONTEND_PLUGIN_FILE="./output/frontend/frontend.yml"
+contract_root=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+pushd "$contract_root" || exit 1
+
+pushd frontend || exit 1
+# shellcheck disable=SC2154
+${tf} init && ${tf} destroy -auto-approve && ${tf} apply -auto-approve
+${CP} -rf frontend.yml ../output/frontend
+popd || exit 1
+
+popd || exit 1
+
+FRONTEND_PLUGIN_FILE="./frontend/frontend.yml"
 if [ ! -f $FRONTEND_PLUGIN_FILE ]; then
-  echo "frontend plugin file does not exist: $FRONTEND_PLUGIN_FILE"
+  echo "frontend encrypted workload contract file does not exist: $FRONTEND_PLUGIN_FILE"
   exit 1
 fi
 FRONTEND_PLUGIN=$(cat "$FRONTEND_PLUGIN_FILE")
 
-BACKEND_FILE="./output/backend/user-data"
-if [ ! -f $BACKEND_FILE ]; then
-  echo "backend file does not exist: $BACKEND_FILE"
-  exit 1
-fi
-BACKEND=$(cat "$BACKEND_FILE")
-
 cat <<-EOT
-# Hyper Protect Encrypted Workloads
 FRONTEND_WORKLOADS=[
   {
     persistent_vol: null,
     name: "frontend-plugin",
     workload: "$FRONTEND_PLUGIN"
-  }
-]
-
-BACKEND_WORKLOADS=[
-  {
-    name: "backend-plugin",
-    hipersocket34: $HIPERSOCKET34,
-    workload: "$BACKEND",
-    persistent_vol: {
-      volume_name = "vault_vol",
-      env_seed = "vaultseed2",
-      prev_seed = "",
-      volume_path = "/var/lib/libvirt/images/oso/fb-vault-data.qcow2"
-    }
   }
 ]
 EOT

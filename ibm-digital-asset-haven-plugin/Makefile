@@ -14,11 +14,16 @@
 # limitations under the License.
 #
 
-FROM docker.io/library/oso-builder:latest as builder
+TEMP_DIR := $(shell mktemp -d)
+REGISTRY ?= us.icr.io
+NAMESPACE ?= dap-osc-dev
+TAG ?= latest
 
-COPY pyproject.toml uv.lock ./
-COPY src src
-RUN uv pip install --python=/opt/oso/venv .
+.PHONY: install build
 
-FROM docker.io/library/oso-runtime:latest as fireblocks-runtime
-COPY --from=builder --chown=1001:0 /opt/oso /opt/oso
+build:
+	docker build \
+		. -t dapcs-haven-oso--plugins:latest -t $(REGISTRY)/$(NAMESPACE)/dapcs-haven-oso-plugins:$(TAG) -f Containerfile
+
+save:
+	docker save -o OSO-PLUGIN-IMAGE.tar $(REGISTRY)/$(NAMESPACE)/dapcs-haven-oso-plugins:$(TAG)

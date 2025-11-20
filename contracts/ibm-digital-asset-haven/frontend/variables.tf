@@ -24,7 +24,7 @@ variable "HPCR_CERT" {
   type        = string
   description = "Public HPCR certificate for contract encryption"
   nullable    = true
-  default     = null
+  default     = ""
 }
 
 variable "FRONTEND_PLUGIN_IMAGE" {
@@ -32,19 +32,13 @@ variable "FRONTEND_PLUGIN_IMAGE" {
   description = "Frontend plugin image name"
 }
 
-variable "FIREBLOCKS_AGENT_IMAGE" {
+variable "HSMDRIVER_IMAGE" {
   type        = string
-  description = "Fireblocks agent image name"
+  description = "HSM Driver image name"
 }
 
-# Fireblocks
-variable "MOBILE_GATEWAY_URL" {
+variable "PROXY_ADDRESS" {
   type        = string
-  description = "Fireblocks mobile gateway url"
-  default     = "https://mobile-api.fireblocks.io"
-}
-
-variable "REFRESH_TOKEN" {
-  type        = string
-  description = "Fireblocks refresh token (in base64)"
+  description = "address of the hsm-proxy endpoint"
+  default     = "hsm-proxy.digitalassets.ibm.com:8443"
 }

@@ -14,11 +14,11 @@
 # limitations under the License.
 #
 
-FROM docker.io/library/oso-builder:latest as builder
-
-COPY pyproject.toml uv.lock ./
-COPY src src
-RUN uv pip install --python=/opt/oso/venv .
-
-FROM docker.io/library/oso-runtime:latest as fireblocks-runtime
-COPY --from=builder --chown=1001:0 /opt/oso /opt/oso
+terraform {
+  required_providers {
+    hpcr = {
+      source  = "ibm-hyper-protect/hpcr"
+      version = ">= 0.14.0"
+    }
+  }
+}

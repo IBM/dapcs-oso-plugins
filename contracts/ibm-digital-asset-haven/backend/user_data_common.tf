@@ -14,11 +14,21 @@
 # limitations under the License.
 #
 
-FROM docker.io/library/oso-builder:latest as builder
-
-COPY pyproject.toml uv.lock ./
-COPY src src
-RUN uv pip install --python=/opt/oso/venv .
-
-FROM docker.io/library/oso-runtime:latest as fireblocks-runtime
-COPY --from=builder --chown=1001:0 /opt/oso /opt/oso
+locals {
+  workload_template = {
+    "type" : "workload",
+    "images": {},
+    "volumes": {
+        "backend_vol": merge(
+         {
+            "filesystem": "ext4",
+            "mount": "/mnt/data",
+            "seed": var.WORKLOAD_VOL_SEED,
+        },
+       length(var.WORKLOAD_VOLUME_PREV_SEED) > 0 ?
+       { previousSeed = var.WORKLOAD_VOLUME_PREV_SEED } :
+       {}
+       )
+    }
+  }
+}

@@ -8,5 +8,10 @@ Plugin code: [/fireblocks-plugin/](./fireblocks-plugin)
 
 Contract configuration: [/contracts/fireblocks/](./contracts/fireblocks)
 
+### IBM Digital Asset Haven
+Plugin code: [/ibm-digital-asset-haven-plugin/](./ibm-digital-asset-haven-plugin)
+
+Contract configuration: [/contracts/ibm-digital-asset-haven/](./contracts/ibm-digital-asset-haven)
+
 ## License
 [Apache-2.0](./LICENSE)
