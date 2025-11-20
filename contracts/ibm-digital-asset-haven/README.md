@@ -1,5 +1,4 @@
 # IBM Digital Asset Haven OSO Plugins
-The Offline Signing Orchestrator frontend plugin performs import or export operations to or from the HSM Proxy which is accessible from LPAR1.
 
 ## Prerequisites
 
@@ -21,11 +20,12 @@ The following steps show how to generate a Certificate Signing Request (CSR) to 
 ```
     ./csr/generate-csr.sh --client-id=<client-id> --hsm-id=<hsm-id> [--cluster-id=<cluster-id>] [--priv-key=<private-key-path>]
 ```
-  An HSM cluster refers to a group of Hardware Security Modules (HSMs) working together to provide cryptographic services in a secure and highly available way.
-  <client-id> - This refers to a unique identifier provided by IBM Support during onboarding.
-  <hsm-id> - The unique identifier for the HSM instance in the cluster.
-  <cluster-id> - The unique identifier for the Cluster instance. Wallets can be associated to a cluster (one or more) of HSM. This parameter is optional.
-  <private-key-path> - The path to the private key to use for signing the CSR. If not provided, a new key will be generated.
+
+An HSM cluster refers to a group of Hardware Security Modules (HSMs) working together to provide cryptographic services in a secure and highly available way.
+    - <client-id> - This refers to a unique identifier provided by IBM Support during onboarding.
+    - <hsm-id> - The unique identifier for the HSM instance in the cluster.
+    - <cluster-id> - The unique identifier for the Cluster instance. Wallets can be associated to a cluster (one or more) of HSM. This parameter is optional.
+    - <private-key-path> - The path to the private key to use for signing the CSR. If not provided, a new key will be generated.
 - Run below command to get LPAR IP.
 ```
     curl ifconfig.me
@@ -36,10 +36,11 @@ The following steps show how to generate a Certificate Signing Request (CSR) to 
     - Provide LPAR IP address to IBM support for whitelisting
     - IBM Support will provide Signed client and CA certificate
     - IBM Support will whitelist your LPAR IP address
-- Copy Signed client certificate to `.contracts\frontend\frontend\tls\client.cert.pem` and CA certificate to `contracts\frontend\frontend\tls\ca.cert.pem`
-- Copy the generated private key to `.contracts\frontend\frontend\tls\client.key.pem`
+- Copy Signed client certificate to `contracts\frontend\frontend\tls\client.cert.pem` and CA certificate to `contracts\frontend\frontend\tls\ca.cert.pem`
+- Copy the generated private key to `contracts\frontend\frontend\tls\client.key.pem`
 
-# Configure the FrontEnd Plugin
+# Configure the Frontend Plugin
+The Offline Signing Orchestrator frontend plugin performs import or export operations to or from the HSM Proxy which is accessible from LPAR1.
 
 ## Generate encrypted workload
 OSO uses the encrypted workload to deploy the frontend (LPAR1) components during the init process. Change to the `frontend` directory, and complete the following steps:
@@ -102,6 +103,6 @@ The system administrator follows the [instructions in the OSO documentation](htt
 - creates persistent volumes on LPAR 3 and reviews and adapts the persistent data definition and `volume_path` in the `BACKEND_WORKLOADS` section as required.
 - reviews and adapts the `hipersocket34` setting in `BACKEND_WORKLOADS` as required: When using crypto passthrough, `hipersocket34` in `BACKEND_WORKLOADS` should be set to `false`.
 - changes the environment seed `env_seed` within the backend workload section (important: see Note below)
-- pushes the Plugin container image, the HSM Driver container image and the DB container image to the OSO container registry as described in the OSO documentation.
+- pushes the Plugin container image, the HSM Driver container image to the OSO container registry as described in the OSO documentation.
 
 Note: The system administrator must keep safe and securely backup the environment seed and must ensure to not loose nor forget nor leak the environment seed.
