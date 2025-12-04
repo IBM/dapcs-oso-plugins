@@ -1,0 +1,14 @@
+# Grep11 Server Configuration
+PREFIX=""
+IMAGE="registry.control23.dap.local/oso/grep11-c16@sha256:"
+DOMAIN=""
+PORT="9876"
+STATIC_IP=true
+
+# C16 Configuration
+C16_CA_CERT=<<-EOT
+EOT
+C16_CLIENT_CERT=<<-EOT
+EOT
+C16_CLIENT_KEY=<<-EOT
+EOT

@@ -1,0 +1,8 @@
+# Container Configuration
+FRONTEND_PLUGIN_IMAGE="registry.control12.dap.local/oso/oso-ripple-plugins@sha256:"
+
+# Ripple
+HMZ_AUTH_HOSTNAME=""
+HMZ_API_HOSTNAME=""
+VAULT_ID=""
+SK=""

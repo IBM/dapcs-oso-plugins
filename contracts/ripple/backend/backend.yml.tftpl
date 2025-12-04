@@ -1,0 +1,73 @@
+version: '3.6'
+
+services:
+  cold-bridge:
+    image: ${tpl.cold_bridge_image}
+    environment:
+      # This must be same as VAULT_ID below
+      Vault__Ids__0: ${tpl.vault_id}
+      # Passphrase: "{{EMPTY}}" is needed so that the bridge data is not cyphered and can be managed by OSO
+      Passphrase: "${tpl.passphrase}"
+    restart: always
+    volumes:
+      - "/mnt/data:/App_Data"
+
+  kmsconnect:
+    image: ${tpl.kmsconnect_image}
+    volumes:
+      - "./ibm.cfg:/opt/kms/cfg/ibm.cfg"
+      - "./cert:/data/cert:ro"
+    restart: always
+
+  cold-vault:
+    image: ${tpl.cold_vault_image}
+    depends_on:
+      - cold-bridge
+      - kmsconnect
+    environment:
+      PLATFORM: kms
+      VAULT_BRIDGE_LOGLEVEL: 7
+      VAULT_CORE_LOGLEVEL: 7
+      VAULT_KMS_ENDPOINT: kmsconnect:10000
+      VAULT_TRUSTED_SIG: pem:${tpl.notary_messaging_public_key}
+      VAULT_ID: ${tpl.vault_id}
+      # This comes from the docker container that is spun up above. If it's normal vault, then it would be API end point.
+      HARMONIZE_CORE_ENDPOINT: http://cold-bridge:8080/internal/v1
+    restart: always
+  backend-plugin:
+    image: ${tpl.backend_plugin_image}
+    depends_on:
+      - cold-vault
+    ports:
+      - "$${PORT}:$${PORT}"
+      - "$${SSH_PORT}:$${SSH_PORT}"
+    environment:
+      COMPONENT: "backend_plugin"
+      SEED: "${tpl.seed}"
+      SSH_PUBKEY: $${SSH_PUBKEY}
+      BACKEND_ENDPOINT: http://cold-bridge:8080
+      SSH_PORT: $${SSH_PORT}
+      PORT: $${PORT}
+      BRIDGE_FINGERPRINT: $${BRIDGE_FINGERPRINT}
+      COMPONENT_CA_CERT: $${COMPONENT_CA_CERT}
+      BACKEND_KEY: $${BACKEND_PLUGIN_KEY}
+      BACKEND_CERT: $${BACKEND_PLUGIN_CERT}
+    restart: always
+%{ if tpl.enable_ep11server }
+  ep11server:
+    user: "0"
+    restart: always
+    image: ${tpl.grep11_image}
+    ports:
+      - "9876:9876"
+    environment:
+      PORT: "9876"
+    volumes:
+      %{ if !tpl.crypto_pass_enable }
+      - ./cfg:/etc/c16
+      %{ endif }
+      - ./srv1:/cfg
+      - ./srv1/grep11server.yaml:/etc/ep11server/ep11server.yaml
+    devices:
+      - "/dev/z90crypt:/dev/z90crypt"
+%{ endif }

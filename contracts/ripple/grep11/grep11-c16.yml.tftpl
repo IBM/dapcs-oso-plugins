@@ -1,0 +1,15 @@
+version: '2.4'
+
+services:
+  ep11server:
+    user: "0"
+    restart: always
+    image: ${tpl.image}
+    ports:
+      - "9876:9876"
+    environment:
+      PORT: 9876
+    volumes:
+      - ./cfg:/etc/c16
+      - ./srv1:/cfg
+      - ./srv1/grep11server.yaml:/etc/ep11server/ep11server.yaml
