@@ -30,4 +30,4 @@ structlog==25.4.0
 typing-extensions==4.14.0
 typing-inspection==0.4.1
 urllib3==2.5.0
-werkzeug==3.1.3
+werkzeug==3.1.4
