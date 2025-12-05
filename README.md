@@ -8,6 +8,11 @@ Plugin code: [/fireblocks-plugin/](./fireblocks-plugin)
 
 Contract configuration: [/contracts/fireblocks/](./contracts/fireblocks)
 
+### Ripple Custody
+Plugin code: [/ripple-plugin/](./ripple-plugin)
+
+Contract configuration: [/contracts/ripple/](./contracts/ripple)
+
 ### IBM Digital Asset Haven
 Plugin code: [/ibm-digital-asset-haven-plugin/](./ibm-digital-asset-haven-plugin)
 

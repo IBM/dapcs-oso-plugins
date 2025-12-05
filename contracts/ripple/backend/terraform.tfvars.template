@@ -1,0 +1,41 @@
+
+PREFIX=""
+STATIC_IP=true
+HPCR_CERT=<<-EOT
+EOT
+# Cold Vault Images
+BACKEND_PLUGIN_IMAGE="registry.control23.dap.local/oso/oso-ripple-plugins@sha256:"
+COLD_BRIDGE_IMAGE="registry.control23.dap.local/metaco-ripple/vault-cold-bridge@sha256:"
+COLD_VAULT_IMAGE="registry.control23.dap.local/metaco-ripple/vault-releases@sha256:"
+KMSCONNECT_IMAGE="registry.control23.dap.local/metaco-ripple/kms-ibm@sha256:"
+
+# Vault Configuration
+VAULT_ID=""
+NOTARY_MESSAGING_PUBLIC_KEY=""
+WORKLOAD_VOL_SEED="vaultseed1"
+
+### GREP11 ###
+GREP11_IMAGE="registry.control23.dap.local/oso/grep11@sha256:"
+DOMAIN=""
+
+#### crypto passthrough
+CRYPTO_PASSTHROUGH_ENABLEMENT=false
+
+### EXTERNAL GREP11 Configuration###
+INTERNAL_GREP11=false
+GREP11_ENDPOINT=""
+GREP11_CA=<<-EOT
+EOT
+GREP11_CLIENT_KEY=<<-EOT
+EOT
+GREP11_CLIENT_CERT=<<-EOT
+EOT
+
+## C16 Configuration ##
+# below are not required if CRYPTO_PASSTHROUGH_ENABLEMENT is true
+C16_CA_CERT=<<-EOT
+EOT
+C16_CLIENT_CERT=<<-EOT
+EOT
+C16_CLIENT_KEY=<<-EOT
+EOT
