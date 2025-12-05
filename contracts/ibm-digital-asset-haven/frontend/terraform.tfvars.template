@@ -1,4 +1,4 @@
 # Frontend Images
-FRONTEND_PLUGIN_IMAGE="192.168.0.9/oso/dapcs-dinero-oso-plugins@sha256:"
+FRONTEND_PLUGIN_IMAGE="192.168.0.9/oso/dapcs-haven-oso-plugins@sha256:"
 HSMDRIVER_IMAGE="192.168.0.9/oso/hsm-signer-driver@sha256:"
 
