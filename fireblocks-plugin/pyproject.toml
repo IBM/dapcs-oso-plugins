@@ -13,7 +13,7 @@ name = "ibm-oso-fireblocks-plugin"
 requires-python = ">= 3.11"
 dependencies = [
     "requests",
-    "cryptography==45.0.5",
+    "cryptography==45.0.7",
     "flask",
     "jsonschema",
     "structlog",
