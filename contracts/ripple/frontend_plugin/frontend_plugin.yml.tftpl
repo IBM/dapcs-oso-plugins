@@ -5,11 +5,8 @@ services:
     image: ${tpl.image}
     ports:
       - "$${PORT}:$${PORT}"
-      - "$${SSH_PORT}:$${SSH_PORT}"
     environment:
       COMPONENT: "frontend_plugin"
-      SSH_PUBKEY: $${SSH_PUBKEY}
-      SSH_PORT: $${SSH_PORT}
       PORT: $${PORT}
       CONFIRMATION_FINGERPRINT: $${CONFIRMATION_FINGERPRINT}
       COMPONENT_CA_CERT: $${COMPONENT_CA_CERT}

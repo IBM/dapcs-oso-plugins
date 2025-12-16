@@ -40,13 +40,10 @@ services:
       - cold-vault
     ports:
       - "$${PORT}:$${PORT}"
-      - "$${SSH_PORT}:$${SSH_PORT}"
     environment:
       COMPONENT: "backend_plugin"
       SEED: "${tpl.seed}"
-      SSH_PUBKEY: $${SSH_PUBKEY}
       BACKEND_ENDPOINT: http://cold-bridge:8080
-      SSH_PORT: $${SSH_PORT}
       PORT: $${PORT}
       BRIDGE_FINGERPRINT: $${BRIDGE_FINGERPRINT}
       COMPONENT_CA_CERT: $${COMPONENT_CA_CERT}
