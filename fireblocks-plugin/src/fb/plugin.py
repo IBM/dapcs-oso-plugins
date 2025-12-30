@@ -72,6 +72,7 @@ class FBPlugin(PluginProtocol):
     def __init__(self) -> None:
         super().__init__()
         self.config = self.Config()
+        self.signing_error = None
 
         self.signed_statuses: List[MessageStatus] = []
         self.pending_messages: List[MessageEnvelope] = []
@@ -308,6 +309,17 @@ class FBPlugin(PluginProtocol):
             )
 
         else:
+            if self.signing_error:
+                return V1_3.ComponentStatus(
+                    status_code=500,
+                    status="ERROR",
+                    errors=[
+                        V1_3.Error(
+                            code="SIGNING-FAILED",
+                            message="Backend failed to sign the documents",
+                        )
+                    ],
+                )
             try:
                 component_status = self.signing_server.health_check()
 
@@ -343,6 +355,7 @@ class FBPlugin(PluginProtocol):
                 )
 
             except Exception as e:
+                self.signing_error = True
                 logger.info("Error signing message")
                 logger.debug(f"Error: {e}")
 
