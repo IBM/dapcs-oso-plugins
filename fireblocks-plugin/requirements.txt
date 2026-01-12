@@ -65,7 +65,7 @@ rpds-py==0.26.0
     #   referencing
 structlog==25.4.0
     # via ibm-oso-fireblocks-plugin
-typing-extensions==4.14.1
+typing-extensions==4.15.0
     # via
     #   pydantic
     #   pydantic-core
