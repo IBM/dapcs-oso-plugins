@@ -131,15 +131,7 @@ class Plugin(PluginProtocol):
                 resp = requests.get(status_url, timeout=5)
                 resp.raise_for_status()
 
-                # If successful, process the response (e.g., print text or parse JSON)
                 logger.debug(f"hsm-driver status successful!")
-
-                # TODO: check hsm driver health
-                return V1_3.ComponentStatus(
-                    status_code=200,
-                    status="OK",
-                    errors=[],
-                )
 
             except Exception as err:
                 logger.debug(f"Error in HSM Driver Status response: {err}")
@@ -155,15 +147,8 @@ class Plugin(PluginProtocol):
                 resp = requests.get(healthcheck_url, timeout=5)
                 resp.raise_for_status()
 
-                # If successful, process the response (e.g., print text or parse JSON)
                 logger.debug(f"hsm-driver healthcheck successful!")
 
-                # TODO: check hsm driver health
-                return V1_3.ComponentStatus(
-                    status_code=200,
-                    status="OK",
-                    errors=[],
-                )
 
             except Exception as err:
                 logger.debug(f"Error in HSM Driver HealthCheck response: {err}")
@@ -174,6 +159,11 @@ class Plugin(PluginProtocol):
                     errors=[],
                 )
 
+            return V1_3.ComponentStatus(
+                status_code=200,
+                status="OK",
+                errors=[],
+            )
 
 def post(url: str, data: any) -> None:
     logger.debug(f"Entering post(): {url=}")

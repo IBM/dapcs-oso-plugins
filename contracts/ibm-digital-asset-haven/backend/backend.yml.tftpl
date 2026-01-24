@@ -54,7 +54,7 @@ spec:
         - "0.0.0.0:3003"
       env:
         - name: LOGS_FILTER
-          value: "${tpl.log_level},hsm_driver=${tpl.log_level},hsm_driver_bin=${tpl.log_level},pkcs11_vendor=${tpl.log_level}"
+          value: "info,hsm_driver=${tpl.log_level},hsm_driver_bin=${tpl.log_level},pkcs11_vendor=${tpl.log_level}"
         - name: DATABASE_PATH
           value: /var/lib/sqlite.db
         - name: PKCS11_IBM_OC_MODULE
