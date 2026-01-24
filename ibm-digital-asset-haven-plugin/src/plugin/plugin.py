@@ -126,14 +126,13 @@ class Plugin(PluginProtocol):
             )
 
         else:
-            base_url = f"http://localhost:3003/status"
+            status_url = f"http://localhost:3003/status"
             try:
-                resp = requests.get(base_url, timeout=5)
+                resp = requests.get(status_url, timeout=5)
                 resp.raise_for_status()
 
                 # If successful, process the response (e.g., print text or parse JSON)
-                logger.debug(f"Request successful!")
-                logger.debug(resp.status_code)
+                logger.debug(f"hsm-driver status successful!")
 
                 # TODO: check hsm driver health
                 return V1_3.ComponentStatus(
@@ -143,11 +142,35 @@ class Plugin(PluginProtocol):
                 )
 
             except Exception as err:
-                logger.debug(f"A general system error occurred: {err}")
+                logger.debug(f"Error in HSM Driver Status response: {err}")
 
                 return V1_3.ComponentStatus(
                     status_code=503,
-                    status="Waiting for HSM Driver",
+                    status="Waiting for HSM Driver Status",
+                    errors=[],
+                )
+
+            healthcheck_url = f"http://localhost:3003/healthcheck"
+            try:
+                resp = requests.get(healthcheck_url, timeout=5)
+                resp.raise_for_status()
+
+                # If successful, process the response (e.g., print text or parse JSON)
+                logger.debug(f"hsm-driver healthcheck successful!")
+
+                # TODO: check hsm driver health
+                return V1_3.ComponentStatus(
+                    status_code=200,
+                    status="OK",
+                    errors=[],
+                )
+
+            except Exception as err:
+                logger.debug(f"Error in HSM Driver HealthCheck response: {err}")
+
+                return V1_3.ComponentStatus(
+                    status_code=503,
+                    status="Waiting for HSM Driver HealthCheck",
                     errors=[],
                 )
 
