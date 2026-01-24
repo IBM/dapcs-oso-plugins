@@ -126,12 +126,44 @@ class Plugin(PluginProtocol):
             )
 
         else:
-             return V1_3.ComponentStatus(
+            status_url = f"http://localhost:3003/status"
+            try:
+                resp = requests.get(status_url, timeout=5)
+                resp.raise_for_status()
+
+                logger.debug(f"hsm-driver status successful!")
+
+            except Exception as err:
+                logger.debug(f"Error in HSM Driver Status response: {err}")
+
+                return V1_3.ComponentStatus(
+                    status_code=503,
+                    status="Waiting for HSM Driver Status",
+                    errors=[],
+                )
+
+            healthcheck_url = f"http://localhost:3003/healthcheck"
+            try:
+                resp = requests.get(healthcheck_url, timeout=5)
+                resp.raise_for_status()
+
+                logger.debug(f"hsm-driver healthcheck successful!")
+
+
+            except Exception as err:
+                logger.debug(f"Error in HSM Driver HealthCheck response: {err}")
+
+                return V1_3.ComponentStatus(
+                    status_code=503,
+                    status="Waiting for HSM Driver HealthCheck",
+                    errors=[],
+                )
+
+            return V1_3.ComponentStatus(
                 status_code=200,
                 status="OK",
                 errors=[],
             )
-
 
 def post(url: str, data: any) -> None:
     logger.debug(f"Entering post(): {url=}")

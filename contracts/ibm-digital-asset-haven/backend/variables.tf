@@ -62,3 +62,15 @@ variable "WORKLOAD_VOLUME_PREV_SEED" {
   description = "Previous Workload Seed phrase for conductor disk volume."
   default     = ""
 }
+
+variable "PREGEN_KEYS" {
+  type        = number
+  description = "Number of Key-Pair to be generated at time of DB Provisioning"
+  default     = 1000
+}
+
+variable "LOG_LEVEL" {
+  type        = string
+  description = "Log Level for HSM Signer"
+  default     = "info"
+}
