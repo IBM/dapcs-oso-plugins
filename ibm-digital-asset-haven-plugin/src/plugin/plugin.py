@@ -126,11 +126,30 @@ class Plugin(PluginProtocol):
             )
 
         else:
-             return V1_3.ComponentStatus(
-                status_code=200,
-                status="OK",
-                errors=[],
-            )
+            base_url = f"http://localhost:3003/status"
+            try:
+                resp = requests.get(base_url, timeout=5)
+                resp.raise_for_status()
+
+                # If successful, process the response (e.g., print text or parse JSON)
+                logger.debug(f"Request successful!")
+                logger.debug(resp.status_code)
+
+                # TODO: check hsm driver health
+                return V1_3.ComponentStatus(
+                    status_code=200,
+                    status="OK",
+                    errors=[],
+                )
+
+            except Exception as err:
+                logger.debug(f"A general system error occurred: {err}")
+
+                return V1_3.ComponentStatus(
+                    status_code=503,
+                    status="Waiting for HSM Driver",
+                    errors=[],
+                )
 
 
 def post(url: str, data: any) -> None:

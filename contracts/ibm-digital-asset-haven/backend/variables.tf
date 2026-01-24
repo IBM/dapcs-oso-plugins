@@ -62,3 +62,9 @@ variable "WORKLOAD_VOLUME_PREV_SEED" {
   description = "Previous Workload Seed phrase for conductor disk volume."
   default     = ""
 }
+
+variable "PREGEN_KEYS" {
+  type        = number
+  description = "No of Key-Pair to be generated at time of DB Provisioning"
+  default     = 1000
+}
