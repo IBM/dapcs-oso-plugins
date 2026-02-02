@@ -49,7 +49,7 @@ resource "local_file" "docker_compose" {
       vault_id = var.VAULT_ID,
       passphrase = var.PASSPHRASE,
       notary_messaging_public_key = var.NOTARY_MESSAGING_PUBLIC_KEY,
-      seed = var.SEED,
+      seed = var.OSOENCRYPTIONPASS,
       enable_ep11server = var.INTERNAL_GREP11,
       crypto_pass_enable = var.CRYPTO_PASSTHROUGH_ENABLEMENT,
       grep11_image = var.GREP11_IMAGE,

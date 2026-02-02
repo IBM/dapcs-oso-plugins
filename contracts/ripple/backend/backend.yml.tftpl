@@ -6,6 +6,11 @@ services:
     environment:
       # This must be same as VAULT_ID below
       Vault__Ids__0: ${tpl.vault_id}
+      Vault__Ids__1: b5c95ea1-0e12-4b2f-8426-87c572b99d09
+      Vault__Ids__2: 1e14abd7-9086-4196-8385-a74907fee202
+      Vault__Ids__3: 4a2b3c11-93c2-4b9f-affd-ff6893774b98
+      Vault__Ids__4: 11111111-1111-1111-1111-111111111111
+
       # Passphrase: "{{EMPTY}}" is needed so that the bridge data is not cyphered and can be managed by OSO
       Passphrase: "${tpl.passphrase}"
     restart: always
@@ -15,8 +20,8 @@ services:
   kmsconnect:
     image: ${tpl.kmsconnect_image}
     volumes:
-      - "./ibm.cfg:/opt/kms/cfg/ibm.cfg"
-      - "./cert:/data/cert:ro"
+      - "./ibm.cfg:/app/cfg/ibm.cfg:Z"
+      - "./cert:/data/cert:ro,Z"
     restart: always
 
   cold-vault:
@@ -26,14 +31,99 @@ services:
       - kmsconnect
     environment:
       PLATFORM: kms
-      VAULT_BRIDGE_LOGLEVEL: 7
-      VAULT_CORE_LOGLEVEL: 7
+      VAULT_BRIDGE_LOGLEVEL: 6
+      VAULT_CORE_LOGLEVEL: 3
       VAULT_KMS_ENDPOINT: kmsconnect:10000
-      VAULT_TRUSTED_SIG: pem:${tpl.notary_messaging_public_key}
+      VAULT_TRUSTED_SIG: ${tpl.notary_messaging_public_key}
       VAULT_ID: ${tpl.vault_id}
       # This comes from the docker container that is spun up above. If it's normal vault, then it would be API end point.
       HARMONIZE_CORE_ENDPOINT: http://cold-bridge:8080/internal/v1
+      HMZ_FEATURE_OPTIONAL_MAXIMUM_FEE: 'true'
     restart: always
+  
+  vault-releases:
+    image: ${tpl.cold_vault_image}
+    depends_on:
+      - cold-bridge
+
+    environment:
+      PLATFORM: mock
+      MOCK_PHRASE: ibmosocold
+
+      # This is the notary public key if it's mock
+      TRUSTED_SIG: ed25519:50692dfa472f013e2f87e5d210be40cefe178e33787be4688d5da0afe06ed149
+      VAULT_ID: b5c95ea1-0e12-4b2f-8426-87c572b99d09
+
+      # This comes from the docker container that is spun up above. If it's normal vault, then it would be API end point.
+      HARMONIZE_CORE_ENDPOINT: http://cold-bridge:8080/internal/v1
+    restart: always
+
+    volumes:
+      - ./mock-cfg/vault.cfg:/opt/vault-core/cfg/vault.cfg
+      - ./mock-cfg/mock.cfg:/opt/vault-core/cfg/mock.cfg
+  
+  
+  vault-releases2:
+    image: ${tpl.cold_vault_image}
+    depends_on:
+      - cold-bridge
+
+    environment:
+      PLATFORM: mock
+      MOCK_PHRASE: ibmosocold2
+
+      # This is the notary public key if it's mock
+      TRUSTED_SIG: ed25519:50692dfa472f013e2f87e5d210be40cefe178e33787be4688d5da0afe06ed149
+      VAULT_ID: 1e14abd7-9086-4196-8385-a74907fee202
+      HMZ_LOG_LEVEL: "DEBUG"
+      HARMONIZE_CORE_ENDPOINT: http://cold-bridge:8080/internal/v1
+    restart: always
+
+    volumes:
+      - ./mock-cfg/vault.cfg:/opt/vault-core/cfg/vault.cfg
+      - ./mock-cfg/mock.cfg:/opt/vault-core/cfg/mock.cfg
+
+  vault-releases3:
+    image: ${tpl.cold_vault_image}
+    depends_on:
+      - cold-bridge
+
+    environment:
+      PLATFORM: mock
+      MOCK_PHRASE: ibmosocold4
+
+      # This is the notary public key if it's mock
+      TRUSTED_SIG: ed25519:50692dfa472f013e2f87e5d210be40cefe178e33787be4688d5da0afe06ed149
+      VAULT_ID: 4a2b3c11-93c2-4b9f-affd-ff6893774b98
+
+      # This comes from the docker container that is spun up above. If it's normal vault, then it would be API end point.
+      HARMONIZE_CORE_ENDPOINT: http://cold-bridge:8080/internal/v1
+    restart: always
+
+    volumes:
+      - ./mock-cfg/vault.cfg:/opt/vault-core/cfg/vault.cfg
+      - ./mock-cfg/mock.cfg:/opt/vault-core/cfg/mock.cfg
+  
+  vault-releases4:
+    image: ${tpl.cold_vault_image}
+    depends_on:
+      - cold-bridge
+
+    environment:
+      PLATFORM: mock
+      MOCK_PHRASE: 22222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222
+      VAULT_LOG_LEVEL: "DEBUG"
+      # This is the notary public key if it's mock
+      TRUSTED_SIG: ed25519:50692dfa472f013e2f87e5d210be40cefe178e33787be4688d5da0afe06ed149
+      VAULT_ID: 11111111-1111-1111-1111-111111111111
+      # This comes from the docker container that is spun up above. If it's normal vault, then it would be API end point.
+      HARMONIZE_CORE_ENDPOINT: http://cold-bridge:8080/internal/v1
+    restart: always
+
+    volumes:
+      - ./mock-cfg/vault.cfg:/opt/vault-core/cfg/vault.cfg
+      - ./mock-cfg/mock.cfg:/opt/vault-core/cfg/mock.cfg
+
   backend-plugin:
     image: ${tpl.backend_plugin_image}
     depends_on:
@@ -42,7 +132,7 @@ services:
       - "$${PORT}:$${PORT}"
     environment:
       COMPONENT: "backend_plugin"
-      SEED: "${tpl.seed}"
+      OSOENCRYPTIONPASS: "${tpl.seed}"
       BACKEND_ENDPOINT: http://cold-bridge:8080
       PORT: $${PORT}
       BRIDGE_FINGERPRINT: $${BRIDGE_FINGERPRINT}

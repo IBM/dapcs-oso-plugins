@@ -5,4 +5,4 @@ FRONTEND_PLUGIN_IMAGE="registry.control12.dap.local/oso/oso-ripple-plugins@sha25
 HMZ_AUTH_HOSTNAME=""
 HMZ_API_HOSTNAME=""
 VAULT_ID=""
-SK=""
+HMZ_USER_SK=""
