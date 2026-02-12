@@ -74,3 +74,8 @@ variable "LOG_LEVEL" {
   description = "Log Level for HSM Signer"
   default     = "info"
 }
+
+variable "DOMAIN_ID" {
+  type        = string
+  description = "Domain Id of Crypto Card"
+}

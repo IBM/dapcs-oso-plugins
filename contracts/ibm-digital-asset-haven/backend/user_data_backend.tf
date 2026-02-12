@@ -22,8 +22,9 @@ resource "local_file" "backend_podman_play" {
       hsmdriver_image = var.HSMDRIVER_IMAGE,
       user_pin = var.USER_PIN,
       so_pin = var.SO_PIN,
-      pregen-keys = var.PREGEN_KEYS,
+      pregen_keys = var.PREGEN_KEYS,
       log_level = var.LOG_LEVEL,
+      domain_id = var.DOMAIN_ID,
     } },
   )
   filename = "backend/podman-play.yml"
