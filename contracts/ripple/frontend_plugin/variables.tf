@@ -39,33 +39,61 @@ variable "SEED" {
 
 # Ripple
 variable "SK" {
-  type = string
+  type        = string
   description = "Private (secret) key of a registered user used to login to Ripple"
 }
 
 variable "VAULT_ID" {
-  type = string
+  type        = string
   description = "Ripple vault id"
 }
 
 variable "HMZ_AUTH_HOSTNAME" {
-  type = string
+  type        = string
   description = "Ripple auth hostname containing no protocol or path"
 }
 
 variable "HMZ_API_HOSTNAME" {
-  type = string
+  type        = string
   description = "Ripple api hostname containing no protocol or path"
 }
 
 variable "ROOTCERT" {
-  type = string
+  type        = string
   description = "Ripple SSL server certification as base64 encoded (optional)"
-  default = ""
+  default     = ""
 }
 
 variable "TOKEN_EXP" {
-  type = string
+  type        = string
   description = "Ripple configured bearer token expiration (#h#m#s format)"
-  default = "4h0m0s"
+  default     = "4h0m0s"
+}
+
+variable "PORT" {
+  type        = string
+  description = "Frontend plugin port"
+  default     = "8080"
+}
+
+variable "CONFIRMATION_FINGERPRINT" {
+  type        = string
+  description = "Confirmation fingerprint for frontend plugin"
+}
+
+variable "COMPONENT_CA_CERT" {
+  type        = string
+  description = "Component CA certificate for frontend plugin"
+}
+
+variable "FRONTEND_PLUGIN_KEY" {
+  type        = string
+  description = "Frontend plugin private key"
+  sensitive   = true
+}
+
+variable "FRONTEND_PLUGIN_CERT" {
+  type        = string
+  description = "Frontend plugin certificate"
+  sensitive   = true
 }
