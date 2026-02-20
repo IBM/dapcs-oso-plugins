@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-plugin-config
+data:
+  PORT: "${port}"
+  CONFIRMATION_FINGERPRINT: "${confirmation_fingerprint}"
+  COMPONENT_CA_CERT: "${component_ca_cert}"

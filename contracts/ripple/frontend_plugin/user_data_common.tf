@@ -16,6 +16,6 @@
 locals {
   workload_template = {
     "type" : "workload",
-    "images": {}
+    "images" : {}
   }
 }
