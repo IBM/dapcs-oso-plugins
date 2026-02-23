@@ -37,6 +37,7 @@ spec:
       ports:
         - containerPort: 4000
           hostPort: 4000
+%{ if tpl.passive_mode }
     - name: hsm-forwarder
       image: ${tpl.hsmdriver_image}
       volumeMounts:
@@ -64,3 +65,4 @@ spec:
         path: ./tls
         type: Directory
       name: tls_vol
+%{ endif }
