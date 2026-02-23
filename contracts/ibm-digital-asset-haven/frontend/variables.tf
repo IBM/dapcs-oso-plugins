@@ -54,3 +54,9 @@ variable "GOVERNANCE_ENGINE_ENABLED" {
   description = "Enable Governance Engine Configuration"
   default     = false
 }
+
+variable "PASSIVE_MODE" {
+  type        = bool
+  default     = false
+  description = "Passive Mode enablement"
+}

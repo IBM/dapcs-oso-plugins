@@ -23,6 +23,7 @@ resource "local_file" "frontend_podman_play" {
       proxy_address = var.PROXY_ADDRESS,
       base_url = var.BASE_URL,
       governance_engine_enabled = var.GOVERNANCE_ENGINE_ENABLED,
+      passive_mode = var.PASSIVE_MODE,
     } },
   )
   filename = "frontend/podman-play.yml"
