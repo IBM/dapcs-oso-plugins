@@ -22,8 +22,6 @@ variable "DEBUG" {
 variable "HPCR_CERT" {
   type        = string
   description = "Public HPCR certificate for contract encryption"
-  nullable    = true
-  default     = null
 }
 
 variable "FRONTEND_PLUGIN_IMAGE" {
@@ -68,4 +66,33 @@ variable "TOKEN_EXP" {
   type = string
   description = "Ripple configured bearer token expiration (#h#m#s format)"
   default = "4h0m0s"
+}
+
+variable "PORT" {
+  type        = string
+  description = "Frontend plugin port"
+  default     = "8080"
+}
+
+variable "CONFIRMATION_FINGERPRINT" {
+  type        = string
+  description = "Confirmation fingerprint for frontend plugin"
+  default     = ""
+}
+
+#variable "HPCR_CERT" {
+#  type        = string
+#  description = "HPCR CERT certificate for frontend plugin"
+#}
+
+variable "FRONTEND_PLUGIN_KEY" {
+  type        = string
+  description = "Frontend plugin private key"
+  default     = ""
+}
+
+variable "FRONTEND_PLUGIN_CERT" {
+  type        = string
+  description = "Frontend plugin certificate"
+  default     = ""
 }
