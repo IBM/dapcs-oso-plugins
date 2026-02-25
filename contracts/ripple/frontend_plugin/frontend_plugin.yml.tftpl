@@ -1,21 +1,55 @@
-version: '2.4'
-
-services:
-  frontend_plugin:
-    image: ${tpl.image}
-    ports:
-      - "$${PORT}:$${PORT}"
-    environment:
-      COMPONENT: "frontend_plugin"
-      PORT: $${PORT}
-      CONFIRMATION_FINGERPRINT: $${CONFIRMATION_FINGERPRINT}
-      COMPONENT_CA_CERT: $${COMPONENT_CA_CERT}
-      FRONTEND_KEY: $${FRONTEND_PLUGIN_KEY}
-      FRONTEND_CERT: $${FRONTEND_PLUGIN_CERT}
-      SK: "${tpl.SK}"
-      VAULTID: "${tpl.VAULTID}"
-      HMZ_AUTH_HOSTNAME: "${tpl.HMZ_AUTH_HOSTNAME}"
-      HMZ_API_HOSTNAME: "${tpl.HMZ_API_HOSTNAME}"
-      ROOTCERT: "${tpl.ROOTCERT}"
-      SEED: "${tpl.SEED}"
-      TOKEN_EXP: "${tpl.TOKEN_EXP}"
+apiVersion: v1
+kind: Pod
+metadata:
+  name: frontend-plugin-pod
+spec:
+  containers:
+    - name: frontend-plugin-app
+      image: ${tpl.image}
+      command:
+        - start-component
+      env:
+        - name: COMPONENT
+          value: "frontend_plugin"
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: frontend-plugin-config
+              key: PORT
+        - name: CONFIRMATION_FINGERPRINT
+          valueFrom:
+            configMapKeyRef:
+              name: frontend-plugin-config
+              key: CONFIRMATION_FINGERPRINT
+        - name: COMPONENT_CA_CERT
+          valueFrom:
+            configMapKeyRef:
+              name: frontend-plugin-config
+              key: COMPONENT_CA_CERT
+        - name: FRONTEND_KEY
+          valueFrom:
+            secretKeyRef:
+              name: frontend-plugin-secrets
+              key: FRONTEND_PLUGIN_KEY
+        - name: FRONTEND_CERT
+          valueFrom:
+            secretKeyRef:
+              name: frontend-plugin-secrets
+              key: FRONTEND_PLUGIN_CERT
+        - name: SK
+          value: "${tpl.SK}"
+        - name: VAULTID
+          value: "${tpl.VAULTID}"
+        - name: HMZ_AUTH_HOSTNAME
+          value: "${tpl.HMZ_AUTH_HOSTNAME}"
+        - name: HMZ_API_HOSTNAME
+          value: "${tpl.HMZ_API_HOSTNAME}"
+        - name: ROOTCERT
+          value: "${tpl.ROOTCERT}"
+        - name: SEED
+          value: "${tpl.SEED}"
+        - name: TOKEN_EXP
+          value: "${tpl.TOKEN_EXP}"
+      ports:
+        - containerPort: ${tpl.PORT}
+          hostPort: ${tpl.PORT}
