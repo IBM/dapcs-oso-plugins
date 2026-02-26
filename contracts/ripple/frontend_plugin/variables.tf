@@ -30,7 +30,7 @@ variable "FRONTEND_PLUGIN_IMAGE" {
 }
 
 variable "SEED" {
-  type        = string
+  type = string
   description = "Encrypt data through the iteration pipeline (should be same value as backend plugin)"
   default     = ""
 }
@@ -79,11 +79,6 @@ variable "CONFIRMATION_FINGERPRINT" {
   description = "Confirmation fingerprint for frontend plugin"
   default     = ""
 }
-
-#variable "HPCR_CERT" {
-#  type        = string
-#  description = "HPCR CERT certificate for frontend plugin"
-#}
 
 variable "FRONTEND_PLUGIN_KEY" {
   type        = string
