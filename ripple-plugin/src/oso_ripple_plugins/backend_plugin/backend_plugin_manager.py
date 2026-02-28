@@ -36,7 +36,7 @@ class BackendPluginManager:
         if "BACKEND_ENDPOINT" not in os.environ:
             raise errors.ConfigError("BACKEND_ENDPOINT not found")
         self.backend_endpoint = os.environ["BACKEND_ENDPOINT"]
-        self.seed = os.environ.get("SEED", "")
+        self.seed = os.environ.get("OSOENCRYPTIONPASS", "")
 
         logging.basicConfig(stream=sys.stdout, level=logging.INFO)
         self.logger = logging.getLogger(__name__)
@@ -55,110 +55,94 @@ class BackendPluginManager:
 
         self.logger.info("Bulk download finished successfully")
 
-        empty_content = {
-            "accounts": [],
-            "transactions": [],
-            "manifests": [],
-            "vaults": [],
-        }
-
-        def write_document_set(documents, content_key: str, id_key: str):
-            for item in response_json.get(content_key, []):
-                self.logger.info(
-                    f"Saving document from {content_key} for bulk download"
-                )
-
-                try:
-                    document_id = item.get(id_key)
-                    self.logger.info(f"Saving document {document_id} for bulk download")
-
-                    content = copy.deepcopy(empty_content)
-                    content.setdefault(content_key, []).append(item)
-
-                    # Encrypt content
-                    if len(self.seed) > 0:
-                        data = crypt.encrypt(json.dumps(content), self.seed)
-                    else:
-                        data = json.dumps(content)
-
-                    documents.append(
-                        {"id": item.get(id_key), "content": data, "metadata": ""}
-                    )
-
-                    self.logger.info(
-                        f"Successfully saved document {document_id} for bulk download"
-                    )
-                except Exception as err:
-                    self.logger.exception(err)
-                    continue
-
         documents = []
-        for content_key, id_key in [
-            ("transactions", "transactionId"),
-            ("accounts", "accountId"),
-            ("manifests", "manifestId"),
-        ]:
-            write_document_set(documents, content_key, id_key)
+
+        sections = [
+            ("transactions", "transactionId", "transaction"),
+            ("accounts", "accountId", "account"),
+            ("manifests", "manifestId", "manifest"),
+        ]
+        for section, id_key, type_name in sections:
+            for item in response_json.get(section, []):
+                # Encrypt if seed is set
+                if self.seed and "signedPayload" in item:
+                    item["signedPayloadCiphered"] = crypt.encrypt(item["signedPayload"], self.seed)
+                    del item["signedPayload"]
+
+                # Build content and metadata
+                content = {
+                    "accounts": [item] if section == "accounts" else [],
+                    "transactions": [item] if section == "transactions" else [],
+                    "manifests": [item] if section == "manifests" else [],
+                    "vaults": [],
+                }
+                meta = {"source": item["vaultId"], "type": type_name}
+
+                documents.append({
+                    "id": item[id_key],
+                    "content": json.dumps(content),
+                    "metadata": json.dumps(meta)
+                })
 
         return documents
 
     def bulk_upload(self, documents):
-        vault_id = None
-        transactions = []
-        accounts = []
-        manifests = []
+        v_tx= {}
+        v_ac= {}
+        v_ma= {}
 
         self.logger.info("Saving documents for bulk upload")
         for document in documents:
             try:
-                document_id = document["id"]
-                self.logger.info(f"Saving document {document_id} for bulk upload")
+                contents = json.loads(document["content"])
+                vaultid= contents.get("vaultId")
 
-                # Decrypt content
-                if len(self.seed) > 0:
-                    contents = json.loads(crypt.decrypt(document["content"], self.seed))
-                else:
-                    contents = json.loads(document["content"])
+                if vaultid not in v_tx:
+                    v_tx[vaultid]=[]
+                    v_ac[vaultid]=[]
+                    v_ma[vaultid]=[]
+                # Map sections to their storage dict
+                section_map = {
+                    "transactions": v_tx[vaultid],
+                    "accounts": v_ac[vaultid],
+                    "manifests": v_ma[vaultid],
+                }
 
-                transactions.extend(contents.get("transactions", []))
-                accounts.extend(contents.get("accounts", []))
-                manifests.extend(contents.get("manifests", []))
+                for section, storage in section_map.items():
+                    for item in contents.get(section, []):
+                        if self.seed and "signedPayloadCiphered" in item:
+                            item["signedPayload"] = crypt.decrypt(item["signedPayloadCiphered"], self.seed)
+                            del item["signedPayloadCiphered"]
+                        storage.append(item)
 
-                if vault_id is None:
-                    vault_id = contents.get("vaultId")
+                self.logger.info(f"Saving document {document['id']} for bulk upload")
 
-                self.logger.info(
-                    f"Successfully saved document {document_id} for bulk upload"
-                )
             except Exception as e:
                 self.logger.exception(e)
                 continue
 
-        if not vault_id:
-            return Exception("Could not get vault id")
-
-        content = {
-            "vaultId": vault_id,
-            "accounts": accounts,
-            "transactions": transactions,
-            "manifests": manifests,
-        }
-
         self.logger.info("Performing bulk upload to backend")
+        for vaultid in v_tx.keys():
+            content = {
+                "vaultId": vaultid,
+                "accounts": v_ac[vaultid],
+                "transactions": v_tx[vaultid],
+                "manifests": v_ma[vaultid],
+            }
+            try:
+                with tempfile.NamedTemporaryFile(mode="w", delete=False) as vault_file:
+                    json.dump(content, vault_file)
 
-        try:
-            with tempfile.NamedTemporaryFile(mode="w", delete=False) as vault_file:
-                json.dump(content, vault_file)
-
-            files = {"files": (vault_id, open(vault_file.name, "rb"))}
-            response = requests.post(
-                url=f"{self.backend_endpoint}/v1/feed/upload",
-                files=files,
-            )
-            response.raise_for_status()
-        except Exception as e:
-            raise e
-        finally:
-            os.remove(vault_file.name)
+                files = {"files": (vaultid, open(vault_file.name, "rb"))}
+                response = requests.post(
+                    url=f"{self.backend_endpoint}/v1/feed/upload",
+                    files=files,
+                )
+                response.raise_for_status()
+                self.logger.info(f"Successfully uploaded vault {vaultid}")
+            except requests.HTTPError as http_err:
+                self.logger.error(f"HTTP error uploading vault {vaultid}: {http_err} - {response.text}")
+            except Exception as err:
+                self.logger.error(f"Unexpected error uploading vault {vaultid}: {err}")
 
         self.logger.info("Bulk upload finished successfully")
