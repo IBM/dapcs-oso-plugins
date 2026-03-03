@@ -3,6 +3,9 @@ PREFIX=""
 # Cold Vault Images
 BACKEND_PLUGIN_IMAGE="registry.control23.dap.local/oso/dapcs-fireblocks-oso-plugins@sha256:"
 
+# Update volume name if it is different from default value vault_vol
+# VOLUME_NAME = ""
+
 # Signing Server Configuration
 WORKLOAD_VOL_SEED="fb_vaultseed1"
 
