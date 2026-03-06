@@ -16,18 +16,17 @@ The Offline Signing Orchestrator frontend plugin performs import or export opera
 
 Prereq: A Fireblocks Keylink workspace
 
-The [fireblocks documentation](https://developers.fireblocks.com/reference/quickstart#step-1-generate-a-csr-file) for this step
-
-1. Create a secret key and CSR for the agent API user using openssl:
+1. Create a secret key and CSR for the agent API user using openssl. To do so, follow the respective [Fireblocks documentation](https://developers.fireblocks.com/reference/quickstart#step-1-generate-a-csr-file) for "Step 1: Generate a CSR file":
    - `openssl req -new -newkey rsa:4096 -nodes -keyout fireblocks_secret.key -out fireblocks.csr -subj '/O=<your_organization>'`
 
-1. Using the Fireblocks Console, create an agent API user:
+1. Using the Fireblocks Console, create an agent API user. To do so, follow the respective [Fireblocks documentation](https://developers.fireblocks.com/reference/quickstart#step-1-generate-a-csr-file) for "Step 2: Create the API user"
     - Select `Signer` role
     - Provide the previously created CSR
+    - The `Co-signer setup` field should be `Fireblocks Agent`
 
 1. Wait until user creation is approved.
 
-1. Use the Fireblocks Console to copy the API key and get the pairing token for the agent user (by clicking on `Pending setup` in the Users list).
+1. Use the Fireblocks Console to copy the API key and get the pairing token for the agent user (by clicking on the small key icon reesp. on `Pending setup` in the [Users list](https://console.fireblocks.io/v2/settings/users)).
 
 1. Create the refresh token for the agent user
     - Install a CLI tool to decode JWT tokens, e.g. `npm install -g jwt-cli`
@@ -144,33 +143,19 @@ Before deploying workloads with OSO, you must register the signing keys manually
 1. Take a backup of volume `fb-vault-data.qcow2`. For disaster recovery planning purposes, this volume is critical and would need to be restored in order to resume signing operations.
 
 ### Create a validation key
-The [fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/14228779100572-Getting-started-with-Fireblocks-Key-Link#h_01HZ4MK8CMM24JFKVR4Q0AQHGB) on key creation
+The [fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/23115386650780-Managing-keys-with-the-Key-Management-Dashboard) on managing keys with the Key Management Dashboard.
+
 
 - Use openssl to create a RSA validation key pair:
   - `openssl genrsa -out validationkey.pem 2048`
   - `openssl rsa -in validationkey.pem -out validationpubkey.pem -outform PEM -pubout`
-- Clone `https://github.com/fireblocks/py-sdk.git`
-- Install with `pip3 install .`
-- Download the example code https://github.com/fireblocks/py-sdk/blob/master/docs/KeyLinkBetaApi.md#create_validation_key to the cloned directory
-- Adapt the downloaded example code [create_validation_key.py]:
-  - Add the path of the file containing the agent user's private key (fireblocks_secret.key)
-  - Add the API key of your agent user
-  - Add the path of the file containing the public validation key in pem format
-- Run `python create_validation_key.py`
-- Wait until the validation key is approved.
+- Follow the Fireblocks documentation step `Adding a validation key` to add the validation key
 
-### Create the signing keys
-- Download the example code https://github.com/fireblocks/py-sdk/blob/master/docs/KeyLinkBetaApi.md#create_signing_key to the cloned directory
-- Adapt the downloaded example code [create_signing_key.py]:
-  - Add the user ID of the agent user (a.k.a. `API key` of your user)
-  - Add the path of the file containing said secret private key for your agent user (`fireblocks_secret.key`)
-  - Add the API key of your agent user
-  - Add the path of the file containing the private validation key in pem format (`validationkey.pem`)
-- For each of said two signing keys created during the empty signing iteration:
-  - Add the key id of the signing key
-  - Add the path of the file containing the public signing key
-  - Run `python signing_key.py` once for each of the keys created by the OSO backend during the previous empty signing iteration.
-- Run a signing iteration with OSO. (Fireblocks will create two `KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST` messages to be signed by the backend. After these message are signed and received by Fireblocks, the keys can be linked to a Vault account.)
+### Add signing keys
+- Find the key id and the public key PEM of the ECDSA key and the EDDSA key that were created during by the OSO backend plugin during the previous "Bootstrap Backend" step. 
+- Determine which of the two signing keys you need to add to the Fireblocks workspace. You may add one or two signing keys. 
+- For each signing keys, follow the Fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/23115386650780-Managing-keys-with-the-Key-Management-Dashboard) step `Adding a signing key` to add the signing key. In the UI dialog, select the API agent user created in one of the previous steps, and provide the key id (in field `Signing device ID`) and the public key PEM of the signing key in the Fireblocks UI. 
+- Run a signing iteration with OSO to complete the interactive proof of ownership for the signing key. (Fireblocks will create two `KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST` messages to be signed by the backend. After these message are signed and received by Fireblocks, the keys can be linked to a Vault account.)
 
 ### Link the signing key to a vault
 - In Fireblocks Console, create a new Vault and note the Vault ID (e.g. from the URL). You can either have the previously created signing key automatically be linked to your new vault, or you can run the following steps:
