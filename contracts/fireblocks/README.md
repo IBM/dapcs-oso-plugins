@@ -12,36 +12,58 @@ The Offline Signing Orchestrator frontend plugin performs import or export opera
 - The supporting infrastructure containing syslog/registry/etc across LPAR1-LPAR3.
 - Download OpenTofu and the required terraform providers (hpcr and local) from the Offline Signing Orchestrator release archive.
 
-### Create a functional OSO user
+### Create a agent API user for the OSO frontend
 
-Prereq: A Fireblocks Keylink workspace
+Prereq: A Fireblocks Keylink workspace where you have administrator permissions
 
-1. Create a secret key and CSR for the agent API user using openssl. To do so, follow the respective [Fireblocks documentation](https://developers.fireblocks.com/reference/quickstart#step-1-generate-a-csr-file) for "Step 1: Generate a CSR file":
+1. Create a secret private key and CSR for the to be created agent API user. To do so, follow the  [Fireblocks documentation](https://developers.fireblocks.com/reference/quickstart#step-1-generate-a-csr-file) under `Step 1: Generate a CSR file` and run the following command:
    - `openssl req -new -newkey rsa:4096 -nodes -keyout fireblocks_secret.key -out fireblocks.csr -subj '/O=<your_organization>'`
+   - This command will create two files: `fireblocks_secret.key` containing the secret key and `fireblocks.csr` containing the CSR
 
-1. Using the Fireblocks Console, create an agent API user. To do so, follow the respective [Fireblocks documentation](https://developers.fireblocks.com/reference/quickstart#step-1-generate-a-csr-file) for "Step 2: Create the API user"
+1. Log in to the Fireblocks Console to create an agent API user. To do so, follow the [Fireblocks documentation](https://developers.fireblocks.com/reference/quickstart#step-1-generate-a-csr-file) `Step 2: Create the API user` and:
     - Select `Signer` role
     - Provide the previously created CSR
-    - The `Co-signer setup` field should be `Fireblocks Agent`
+    - Ensure in the `Co-signer setup` field option `Fireblocks Agent` is selected
 
 1. Wait until user creation is approved.
 
-1. Use the Fireblocks Console to copy the API key and get the pairing token for the agent user (by clicking on the small key icon reesp. on `Pending setup` in the [Users list](https://console.fireblocks.io/v2/settings/users)).
+1. Login to the Fireblocks Console, open the [Users list](https://console.fireblocks.io/v2/settings/users)), find the previously created agent API user, make sure the user is in status `Pending setup` and retrieve the API key (via the small key symbol next to the user name) and the pairing token for the agent user (by clicking on the `Pending setup` status message). Keep both the API key and the pairing token.
 
-1. Create the refresh token for the agent user
+1. Create the refresh token for the agent user. This step needs to be performed by a developer or a user who has a node.js/npm development or test environment. To do so
     - Install a CLI tool to decode JWT tokens, e.g. `npm install -g jwt-cli`
-    - Run the CLI tool to decode the pairing token, e.g. `jwt <pairingtoken> --output=json`
-    - Copy and save the `userId` from the decoded token
+    - Run the CLI tool to decode the pairing token, e.g. `jwt <pairingtoken> --output=json`. This will display a json document like e.g.
+```
+{
+  "header": {
+    "typ": "JWT",
+    "alg": "HS256"
+  },
+  "payload": {
+    "iat": redacted-timestamp,
+    "exp": redacted-timestamp,
+    "tenantId": "redacted",
+    "tenantName": "redacted",
+    "type": "devicePairing",
+    "userId": "redacted"
+  },
+  "signature": "redacted",
+  "input": "redacted-base64-encoded-string"
+}
+```
+    - Copy and save the `userId` value from the decoded token
     - Prepare and run the following command:
       - `curl --url https://mobile-api.fireblocks.io/pair_device --header 'Content-Type: application/json' --data '{ "userId": "<userId>", "pairingToken": "<pairingToken>"}'`
-    - Copy and save the returned and displayed refresh token in json format. The agent user is now displayed in state `Active` in the Fireblocks Console.
-    - Review, and if required edit the saved refresh token json file: Add missing properties and remove surplus properties. Below is expected resulting JSON structure of the refresh token:
+    - Copy and save the JSON document returned/displayed by this command. The document looks like e.g.
+```
+{"refreshToken":"redacted-hex","initialConfiguration":{"twoFAtype":"BIOMETRIC"},"deviceId":"redacted-uuid"}
+```
+    - Ensure the agent user is now displayed in state `Active` in the Fireblocks Console user list.
+    - Review, and if required edit the saved JSON document: Add missing properties (e.g. `userID`) and remove surplus properties (e.g. `initialConfiguration`). Below is the required JSON structure:
 
     `{"refreshToken":"<hex>","deviceId":"<uuid>","userId":"<uuid>"}`
-    - You can get its base64 encoded value with
+    - Base64 encode the JSON document, e.g.
+    ` echo '{"refreshToken":"<hex>","deviceId":"<uuid>","userId":"<uuid>"}' | base64 -w0
 
-    ` echo '<refreshtokenjson>' | base64 -w0
-    `
 
 ### Generate encrypted workload
 OSO uses the encrypted workload to deploy the frontend (LPAR1) components during the `init` process.  Change to the `frontend` directory, and complete the following steps:
@@ -53,7 +75,7 @@ OSO uses the encrypted workload to deploy the frontend (LPAR1) components during
     - `FRONTEND_PLUGIN_IMAGE` - Frontend plugin image with sha256 digest
     - `FIREBLOCKS_AGENT_IMAGE` - Fireblocks agent image with sha256 digest
     - `MOBILE_GATEWAY_URL` - Mobile gateway url endpoint (default: https://mobile-api.fireblocks.io)
-    - `REFRESH_TOKEN` - Refresh token for the API user (base64 encoded JSON)
+    - `REFRESH_TOKEN` - Refresh token for the API user (base64 encoded JSON as described above)
 1. To generate the encrypted workload, change to the `contracts` directory and run:
 
     `./create-frontend.sh`
