@@ -27,11 +27,11 @@ Prereq: A Fireblocks Keylink workspace where you have administrator permissions
 
 1. Wait until user creation is approved.
 
-1. Login to the Fireblocks Console, open the [Users list](https://console.fireblocks.io/v2/settings/users)), find the previously created agent API user, make sure the user is in status `Pending setup` and retrieve the API key (via the small key symbol next to the user name) and the pairing token for the agent user (by clicking on the `Pending setup` status message). Keep both the API key and the pairing token.
+1. Login to the Fireblocks Console, open the [Users list](https://console.fireblocks.io/v2/settings/users), find the previously created agent API user, make sure the user is in status `Pending setup` and retrieve the API key (via the small key symbol next to the user name) and the pairing token for the agent user (by clicking on the `Pending setup` status message). Keep both the API key and the pairing token.
 
 1. Create the refresh token for the agent user. This step needs to be performed by a developer or a user who has a node.js/npm development or test environment. To do so
     - Install a CLI tool to decode JWT tokens, e.g. `npm install -g jwt-cli`
-    - Run the CLI tool to decode the pairing token, e.g. `jwt <pairingtoken> --output=json`. This will display a json document like e.g.
+    - Run the CLI tool to decode the pairing token, e.g. `jwt <pairingtoken> --output=json`. This will display the decoded token in form of a json document like e.g.
 ```
 {
   "header": {
@@ -50,19 +50,19 @@ Prereq: A Fireblocks Keylink workspace where you have administrator permissions
   "input": "redacted-base64-encoded-string"
 }
 ```
-    - Copy and save the `userId` value from the decoded token
+
+6. Retrieve the refresh token
+    - Copy and save the `userId` value from the JSON document
     - Prepare and run the following command:
       - `curl --url https://mobile-api.fireblocks.io/pair_device --header 'Content-Type: application/json' --data '{ "userId": "<userId>", "pairingToken": "<pairingToken>"}'`
-    - Copy and save the JSON document returned/displayed by this command. The document looks like e.g.
-```
-{"refreshToken":"redacted-hex","initialConfiguration":{"twoFAtype":"BIOMETRIC"},"deviceId":"redacted-uuid"}
-```
-    - Ensure the agent user is now displayed in state `Active` in the Fireblocks Console user list.
-    - Review, and if required edit the saved JSON document: Add missing properties (e.g. `userID`) and remove surplus properties (e.g. `initialConfiguration`). Below is the required JSON structure:
-
-    `{"refreshToken":"<hex>","deviceId":"<uuid>","userId":"<uuid>"}`
-    - Base64 encode the JSON document, e.g.
-    ` echo '{"refreshToken":"<hex>","deviceId":"<uuid>","userId":"<uuid>"}' | base64 -w0
+    - Save the JSON document returned/displayed by this command. The document looks like e.g.
+      - `{"refreshToken":"redacted-hex","initialConfiguration":{"twoFAtype":"BIOMETRIC"},"deviceId":"redacted-uuid"}`
+    - Review, and if required edit this JSON document: Add missing properties (e.g. `userID`) and remove surplus properties (e.g. `initialConfiguration`). Below is the required final JSON structure:
+       - `{"refreshToken":"<hex>","deviceId":"<uuid>","userId":"<uuid>"}`
+    - Base64 encode the JSON document
+       - run command `echo '{"refreshToken":"<hex>","deviceId":"<uuid>","userId":"<uuid>"}' | base64 -w0`
+       - and save the output
+    - In the Fireblocks Console, ensure the agent user is now displayed in state `Active`.
 
 
 ### Generate encrypted workload
