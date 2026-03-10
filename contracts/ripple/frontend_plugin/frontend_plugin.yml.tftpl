@@ -1,41 +1,20 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: frontend-plugin-pod
+  name: frontend_plugin
 spec:
   containers:
-    - name: frontend-plugin-app
+    - name: frontend_plugin
       image: ${tpl.image}
-      command:
-        - start-component
+      envFrom:
+        - configMapRef:
+            name: contract.config.map
+            optional: false
       env:
         - name: COMPONENT
           value: "frontend_plugin"
         - name: PORT
-          valueFrom:
-            configMapKeyRef:
-              name: frontend-plugin-config
-              key: PORT
-        - name: CONFIRMATION_FINGERPRINT
-          valueFrom:
-            configMapKeyRef:
-              name: frontend-plugin-config
-              key: CONFIRMATION_FINGERPRINT
-        - name: COMPONENT_CA_CERT
-          valueFrom:
-            configMapKeyRef:
-              name: frontend-plugin-config
-              key: COMPONENT_CA_CERT
-        - name: FRONTEND_KEY
-          valueFrom:
-            secretKeyRef:
-              name: frontend-plugin-secrets
-              key: FRONTEND_PLUGIN_KEY
-        - name: FRONTEND_CERT
-          valueFrom:
-            secretKeyRef:
-              name: frontend-plugin-secrets
-              key: FRONTEND_PLUGIN_CERT
+          value: 4000
         - name: SK
           value: "${tpl.SK}"
         - name: VAULTID
@@ -51,5 +30,5 @@ spec:
         - name: TOKEN_EXP
           value: "${tpl.TOKEN_EXP}"
       ports:
-        - containerPort: ${tpl.PORT}
-          hostPort: ${tpl.PORT}
+        - containerPort: 4000 
+          hostPort: 4000
