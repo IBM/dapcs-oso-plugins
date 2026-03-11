@@ -165,17 +165,18 @@ Before deploying workloads with OSO, you must register the signing keys manually
 1. Take a backup of volume `fb-vault-data.qcow2`. For disaster recovery planning purposes, this volume is critical and would need to be restored in order to resume signing operations.
 
 ### Create a validation key
-You need to create at least one validation key. To do so
+Before you can add signing keys, you must have at least one approved validation key. If you do not have a validation key, follow these instructions to create one:
 - Use openssl to create a RSA validation key pair:
   - `openssl genrsa -out validationkey.pem 2048`
   - `openssl rsa -in validationkey.pem -out validationpubkey.pem -outform PEM -pubout`
 - Follow the [fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/23115386650780-Managing-keys-with-the-Key-Management-Dashboard) step `Adding a validation key` to add one validation key
+- Wait until the validation key is approved and the the key status changes to Active in the validation keys table.
 
 ### Add signing keys
+Add the signing keys created by the OSO backend during bootstrapping to your Fireblocks workspace: 
 - Find the key id and the public key PEM of the ECDSA key and the EDDSA key that were created during by the OSO backend plugin during the previous "Bootstrap Backend" step. 
-- Determine which of the two signing keys you need to add to the Fireblocks workspace. You may add one or two signing keys. 
-- For each signing keys, follow the Fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/23115386650780-Managing-keys-with-the-Key-Management-Dashboard) step `Adding a signing key` to add the signing key. In the UI dialog, select the API agent user created in one of the previous steps, and provide the key id (in field `Signing device ID`) and the public key PEM of the signing key in the Fireblocks UI. 
-- Run a signing iteration with OSO to complete the interactive proof of ownership for the signing key. (Fireblocks will create two `KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST` messages to be signed by the backend. After these message are signed and received by Fireblocks, the keys can be linked to a Vault account.)
+- For each signing key, follow the Fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/23115386650780-Managing-keys-with-the-Key-Management-Dashboard) step `Adding a signing key` to add the signing key. In the UI dialog, select the API agent user created in one of the previous steps, and provide the key id (in field `Signing device ID`) and the public key PEM of the signing key in the Fireblocks UI. 
+- Run a signing iteration with OSO to complete the interactive proof of ownership for the signing keys. (Fireblocks will create two `KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST` messages to be signed by the backend, one for each added signing key. After these message are signed by the OSO backend and received by Fireblocks, the signing keys can be linked to Vault accounts in the subsequent step.)
 
 ### Link the signing key to a vault
 - In Fireblocks Console, create a new Vault and note the Vault ID (e.g. from the URL). You can either have the previously created signing key automatically be linked to your new vault, or you can run the following steps:
