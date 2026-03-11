@@ -60,7 +60,7 @@ Prereq: A Fireblocks Keylink workspace where you have administrator permissions
     - Review, and if required edit this JSON document: Add missing properties (e.g. `userID`) and remove surplus properties (e.g. `initialConfiguration`). Below is the required final JSON structure:
        - `{"refreshToken":"<hex>","deviceId":"<uuid>","userId":"<uuid>"}`
     - Base64 encode the JSON document
-       - run command `echo '{"refreshToken":"<hex>","deviceId":"<uuid>","userId":"<uuid>"}' | base64 -w0`
+       - run command `echo '{"refreshToken":"<redacted-hex>","deviceId":"<redacted-uuid>","userId":"<redacted-uuid>"}' | base64 -w0`
        - and save the output
     - In the Fireblocks Console, ensure the agent user is now displayed in state `Active`.
 
@@ -165,13 +165,11 @@ Before deploying workloads with OSO, you must register the signing keys manually
 1. Take a backup of volume `fb-vault-data.qcow2`. For disaster recovery planning purposes, this volume is critical and would need to be restored in order to resume signing operations.
 
 ### Create a validation key
-The [fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/23115386650780-Managing-keys-with-the-Key-Management-Dashboard) on managing keys with the Key Management Dashboard.
-
-
+You need to create at least one validation key. To do so
 - Use openssl to create a RSA validation key pair:
   - `openssl genrsa -out validationkey.pem 2048`
   - `openssl rsa -in validationkey.pem -out validationpubkey.pem -outform PEM -pubout`
-- Follow the Fireblocks documentation step `Adding a validation key` to add the validation key
+- Follow the [fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/23115386650780-Managing-keys-with-the-Key-Management-Dashboard) step `Adding a validation key` to add one validation key
 
 ### Add signing keys
 - Find the key id and the public key PEM of the ECDSA key and the EDDSA key that were created during by the OSO backend plugin during the previous "Bootstrap Backend" step. 
