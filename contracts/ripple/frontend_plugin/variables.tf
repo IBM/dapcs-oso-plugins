@@ -32,7 +32,7 @@ variable "FRONTEND_PLUGIN_IMAGE" {
 }
 
 variable "SEED" {
-  type = string
+  type        = string
   description = "Encrypt data through the iteration pipeline (should be same value as backend plugin)"
   default     = ""
 }
