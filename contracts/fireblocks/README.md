@@ -176,17 +176,7 @@ Before you can add signing keys, you must have at least one approved validation 
 Add the signing keys created by the OSO backend during bootstrapping to your Fireblocks workspace: 
 - Find the key id and the public key PEM of the ECDSA key and the EDDSA key that were created during by the OSO backend plugin during the previous "Bootstrap Backend" step. 
 - For each signing key, follow the Fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/23115386650780-Managing-keys-with-the-Key-Management-Dashboard) step `Adding a signing key` to add the signing key. In the UI dialog, select the API agent user created in one of the previous steps, and provide the key id (in field `Signing device ID`) and the public key PEM of the signing key in the Fireblocks UI. 
-- Run a signing iteration with OSO to complete the interactive proof of ownership for the signing keys. (Fireblocks will create two `KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST` messages to be signed by the backend, one for each added signing key. After these message are signed by the OSO backend and received by Fireblocks, the signing keys can be linked to Vault accounts in the subsequent step.)
+- Run a signing iteration with OSO to complete the interactive proof of ownership for the signing keys. (Fireblocks will create two `KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST` messages to be signed by the backend, one for each added signing key. After these message are signed by the OSO backend and received by Fireblocks, the signing keys can be linked to Vault accounts in the subsequent step.). After the signing iteration completes, the signing key status changes from `Pending proof` to `Pending assignment`.
 
-### Link the signing key to a vault
-- In Fireblocks Console, create a new Vault and note the Vault ID (e.g. from the URL). You can either have the previously created signing key automatically be linked to your new vault, or you can run the following steps:
-- Download the example code https://github.com/fireblocks/py-sdk/blob/master/docs/KeyLinkBetaApi.md#update_signing_key  to the cloned directory
-- Adapt the downloaded example code [update_signing_key.py]
-  - Add the user ID of the agent user
-  - Add the path of the file containing said secret private key for your agent user
-  - Add the API key of your agent user
-  - Add the path of the file containing the private validation key in pem format
-  - Add the key id of the signing key
-  - Add the vault id
-- Run `python update_signing_key.py`
-- The signing key is now linked to the vault account.
+### Link the signing key to a vault account
+You can link a signing key that is in status `Pending assignment` to a vault account. To do so, follow the [Fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/23115386650780-Managing-keys-with-the-Key-Management-Dashboard) step `Assigning signing keys to Vault accounts`.
