@@ -102,6 +102,12 @@ variable "GREP11_CLIENT_CERT" {
   default = ""
 }
 
+variable "VOLUME_NAME" {
+  type = string
+  description = "Volume name"
+  default = "vault_vol"
+}
+
 variable "WORKLOAD_VOL_SEED" {
   type = string
   description = "Workload volume encryption seed"

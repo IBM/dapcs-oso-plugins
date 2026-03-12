@@ -14,6 +14,9 @@ VAULT_ID=""
 NOTARY_MESSAGING_PUBLIC_KEY=""
 WORKLOAD_VOL_SEED="vaultseed1"
 
+# Update volume name if it is different from default value vault_vol
+# VOLUME_NAME = ""
+
 ### GREP11 ###
 GREP11_IMAGE="registry.control23.dap.local/oso/grep11@sha256:"
 DOMAIN=""
