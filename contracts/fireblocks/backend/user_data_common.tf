@@ -19,7 +19,7 @@ locals {
     "type" : "workload",
     "images": {},
     "volumes": {
-        var.VOLUME_NAME: {
+        (var.VOLUME_NAME): {
             "filesystem": "ext4",
             "mount": "/data",
             "seed": var.WORKLOAD_VOL_SEED,
