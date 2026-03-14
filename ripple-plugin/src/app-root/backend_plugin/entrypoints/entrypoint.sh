@@ -19,8 +19,8 @@ mkdir -p /app-root/all-certs
 
 # Write certs to file
 echo "${COMPONENT_CA_CERT}" >/app-root/all-certs/component-ca-cert.pem
-echo "${BACKEND_CERT}" >/app-root/all-certs/backend-certificate.pem
-echo "${BACKEND_KEY}" >/app-root/all-certs/backend-key.pem
+echo "${BACKEND_PLUGIN_CERT}" >/app-root/all-certs/backend-certificate.pem
+echo "${BACKEND_PLUGIN_KEY}" >/app-root/all-certs/backend-key.pem
 
 export COMPONENT_FINGERPRINTS="${BRIDGE_FINGERPRINT}"
 
