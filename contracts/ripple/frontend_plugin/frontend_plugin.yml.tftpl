@@ -1,21 +1,34 @@
-version: '2.4'
-
-services:
-  frontend_plugin:
-    image: ${tpl.image}
-    ports:
-      - "$${PORT}:$${PORT}"
-    environment:
-      COMPONENT: "frontend_plugin"
-      PORT: $${PORT}
-      CONFIRMATION_FINGERPRINT: $${CONFIRMATION_FINGERPRINT}
-      COMPONENT_CA_CERT: $${COMPONENT_CA_CERT}
-      FRONTEND_KEY: $${FRONTEND_PLUGIN_KEY}
-      FRONTEND_CERT: $${FRONTEND_PLUGIN_CERT}
-      SK: "${tpl.SK}"
-      VAULTID: "${tpl.VAULTID}"
-      HMZ_AUTH_HOSTNAME: "${tpl.HMZ_AUTH_HOSTNAME}"
-      HMZ_API_HOSTNAME: "${tpl.HMZ_API_HOSTNAME}"
-      ROOTCERT: "${tpl.ROOTCERT}"
-      SEED: "${tpl.SEED}"
-      TOKEN_EXP: "${tpl.TOKEN_EXP}"
+apiVersion: v1
+kind: Pod
+metadata:
+  name: frontend_plugin
+spec:
+  containers:
+    - name: frontend_plugin
+      image: ${tpl.image}
+      envFrom:
+        - configMapRef:
+            name: contract.config.map
+            optional: false
+      env:
+        - name: COMPONENT
+          value: "frontend_plugin"
+        - name: PORT
+          value: 4000
+        - name: SK
+          value: "${tpl.SK}"
+        - name: VAULTID
+          value: "${tpl.VAULTID}"
+        - name: HMZ_AUTH_HOSTNAME
+          value: "${tpl.HMZ_AUTH_HOSTNAME}"
+        - name: HMZ_API_HOSTNAME
+          value: "${tpl.HMZ_API_HOSTNAME}"
+        - name: ROOTCERT
+          value: "${tpl.ROOTCERT}"
+        - name: SEED
+          value: "${tpl.SEED}"
+        - name: TOKEN_EXP
+          value: "${tpl.TOKEN_EXP}"
+      ports:
+        - containerPort: 4000 
+          hostPort: 4000
