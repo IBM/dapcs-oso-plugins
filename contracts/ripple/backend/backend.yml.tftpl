@@ -64,6 +64,10 @@ spec:
           value: "http://localhost:8080"
         - name: PORT
           value: "4000"
+      ports:
+        - containerPort: 4000
+          hostPort: 4000
+
 
 %{ if tpl.enable_ep11server }
     - name: ep11server
