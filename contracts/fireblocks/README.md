@@ -174,9 +174,16 @@ Before you can add signing keys, you must have at least one approved validation 
 
 ### Add signing keys
 Add the signing keys created by the OSO backend during bootstrapping to your Fireblocks workspace: 
-- Find the key id and the public key PEM of the ECDSA key and the EDDSA key that were created during by the OSO backend plugin during the previous "Bootstrap Backend" step. 
-- For each signing key, follow the Fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/23115386650780-Managing-keys-with-the-Key-Management-Dashboard) step `Adding a signing key` to add the signing key. In the UI dialog, select the API agent user created in one of the previous steps, and provide the key id (in field `Signing device ID`) and the public key PEM of the signing key in the Fireblocks UI. 
-- Run a signing iteration with OSO to complete the interactive proof of ownership for the signing keys. (Fireblocks will create two `KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST` messages to be signed by the backend, one for each added signing key. After these message are signed by the OSO backend and received by Fireblocks, the signing keys can be linked to Vault accounts in the subsequent step.). After the signing iteration completes, the signing key status changes from `Pending proof` to `Pending assignment`.
+- Find the key id and the public key PEM of the ECDSA key and the EDDSA key that were created during by the OSO backend plugin during the previous "Bootstrap Backend" step.
+- Review and if required fix the format of the said public keys: Replace `\n` by a new line. The keys need to be in syntactically correct PEM format, e.g.:
+```
+-----BEGIN PUBLIC KEY-----
+MII....ABC
+DEF...==
+-----END PUBLIC KEY-----
+```
+- For each signing key, follow the [Fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/23115386650780-Managing-keys-with-the-Key-Management-Dashboard) step `Adding a signing key` to add the signing key. In the UI dialog, select the API agent user created in one of the previous steps, and provide the key id (in field `Signing device ID`) and the public key PEM of the signing key in the Fireblocks UI. 
+- Run a signing iteration with OSO to complete the interactive proof of ownership for the signing keys. Fireblocks will create two `KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST` messages, one for each added signing key. These messages need to be approved in OSO and must be signed by the OSO backend. The response including the signature must be approved in OSO and must be received by Fireblocks. After the signing iteration completes and the responses are received by Fireblocks, the signing key status changes from `Pending proof` to `Pending assignment`. You can now link the signing keys to vault accounts.
 
 ### Link the signing key to a vault account
 You can link a signing key that is in status `Pending assignment` to a vault account. To do so, follow the [Fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/23115386650780-Managing-keys-with-the-Key-Management-Dashboard) step `Assigning signing keys to Vault accounts`.
