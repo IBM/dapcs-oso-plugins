@@ -62,7 +62,10 @@ class Plugin(PluginProtocol):
                 case "frontend":
                     operations = get(get_operations_endpoint(FRONTEND_PORT))
                     for op in operations:
-                        id = op["uuid"]
+                        try:
+                            id = op["user_action"]["transferId"]
+                        except KeyError:
+                            id = op["uuid"]
                         assert id
                         if id not in self.frontendknownids:
                             docs.append(V1_3.Document(
