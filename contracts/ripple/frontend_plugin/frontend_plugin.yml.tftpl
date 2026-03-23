@@ -17,16 +17,24 @@ spec:
           value: "4000"
         - name: SK
           value: "${tpl.SK}"
+        - name: HMZ_USER_SK
+          value: "${tpl.HMZ_USER_SK}"
         - name: VAULTID
           value: "${tpl.VAULTID}"
         - name: HMZ_AUTH_HOSTNAME
           value: "${tpl.HMZ_AUTH_HOSTNAME}"
         - name: HMZ_API_HOSTNAME
           value: "${tpl.HMZ_API_HOSTNAME}"
+	- name: HMZ_AUTH_CUSTOMERID
+	  value: "${tpl.HMZ_AUTH_CUSTOMERID}"
+	- name: HMZ_AUTH_PATH
+	  value: "${tpl.HMZ_AUTH_PATH}"
         - name: ROOTCERT
           value: "${tpl.ROOTCERT}"
         - name: SEED
           value: "${tpl.SEED}"
+	- name: OSOENCRYPTIONPASS
+	  value: "${tpl.OSOENCRYPTIONPASS}"
         - name: TOKEN_EXP
           value: "${tpl.TOKEN_EXP}"
       ports:
