@@ -46,17 +46,6 @@ variable "HSMDRIVER_IMAGE" {
   description = "HSM Driver image name"
 }
 
-variable "USER_PIN" {
-  type        = string
-  description = "PKCS11 normal user PIN"
-}
-
-variable "SO_PIN" {
-  type        = string
-  description = "PKCS11 SO PIN"
-  default     = "87654321"
-}
-
 variable "WORKLOAD_VOLUME_PREV_SEED" {
   type        = string
   description = "Previous Workload Seed phrase for conductor disk volume."
