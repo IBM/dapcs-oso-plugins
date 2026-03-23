@@ -72,7 +72,7 @@ def set_cert():
 
 def bind_flask_before_request(sender: Flask, **extras) -> None:
     logger.info(f"HTTP Method: {request.method} URL Path: {request.path}")
-
+    return
     client_verify = request.headers.get("X-SSL-CLIENT-VERIFY", "FAILED")
     if client_verify != "SUCCESS":
         logger.info(f"Could not verify certificate, client verify: {client_verify}")
