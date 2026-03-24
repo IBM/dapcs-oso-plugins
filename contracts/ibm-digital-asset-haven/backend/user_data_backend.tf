@@ -20,8 +20,6 @@ resource "local_file" "backend_podman_play" {
     { tpl = {
       plugin_image = var.BACKEND_PLUGIN_IMAGE,
       hsmdriver_image = var.HSMDRIVER_IMAGE,
-      user_pin = var.USER_PIN,
-      so_pin = var.SO_PIN,
       pregen_keys = var.PREGEN_KEYS,
       log_level = var.LOG_LEVEL,
       domain_id = var.DOMAIN_ID,
