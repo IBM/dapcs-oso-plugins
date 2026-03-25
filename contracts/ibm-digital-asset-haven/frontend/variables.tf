@@ -42,3 +42,9 @@ variable "PROXY_ADDRESS" {
   description = "address of the hsm-proxy endpoint"
   default     = "hsm-proxy.digitalassets.ibm.com:8443"
 }
+
+variable "PASSIVE_MODE" {
+  type = bool
+  default = false
+  description = "Passive Mode enablement"
+}
