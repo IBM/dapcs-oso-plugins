@@ -23,6 +23,7 @@ resource "local_file" "backend_podman_play" {
       pregen_keys = var.PREGEN_KEYS,
       log_level = var.LOG_LEVEL,
       domain_id = var.DOMAIN_ID,
+      base_url = var.BASE_URL,
     } },
   )
   filename = "backend/podman-play.yml"

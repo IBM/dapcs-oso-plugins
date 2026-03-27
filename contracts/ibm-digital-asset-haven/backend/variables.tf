@@ -68,3 +68,9 @@ variable "DOMAIN_ID" {
   type        = string
   description = "Domain Id of Crypto Card"
 }
+
+variable "BASE_URL" {
+  type        = string
+  description = "address of the Haven UI"
+  default     = "http://app.digitalassets.ibm.com/"
+}
