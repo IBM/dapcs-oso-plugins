@@ -23,6 +23,8 @@ spec:
           value: "plugin:Plugin"
         - name: plugin__mode
           value: "backend"
+        - name: BASE_URL
+          value: ${tpl.base_url}
     - name: backend_plugin_proxy
       image: ${tpl.plugin_image}
       command:

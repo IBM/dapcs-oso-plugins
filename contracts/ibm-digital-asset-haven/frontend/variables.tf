@@ -42,3 +42,9 @@ variable "PROXY_ADDRESS" {
   description = "address of the hsm-proxy endpoint"
   default     = "hsm-proxy.digitalassets.ibm.com:8443"
 }
+
+variable "BASE_URL" {
+  type        = string
+  description = "address of the Haven UI"
+  default     = "https://app.digitalassets.ibm.com"
+}
