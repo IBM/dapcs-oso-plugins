@@ -53,6 +53,7 @@ resource "local_file" "podman-play" {
       enable_ep11server = var.INTERNAL_GREP11,
       crypto_pass_enable = var.CRYPTO_PASSTHROUGH_ENABLEMENT,
       grep11_image = var.GREP11_IMAGE,
+      mock_vaults = var.MOCK_VAULTS, 
     } },
   )
   filename = "podman-play/play.yml"

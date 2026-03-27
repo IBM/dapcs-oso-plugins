@@ -37,12 +37,6 @@ variable "SEED" {
   default     = ""
 }
 
-# Ripple
-variable "SK" {
-  type = string
-  description = "Private (secret) key of a registered user used to login to Ripple"
-}
-
 variable "VAULT_ID" {
   type = string
   description = "Ripple vault id"
