@@ -200,3 +200,12 @@ variable "CRYPTO_PASSTHROUGH_ENABLEMENT" {
   default = true
   description = "Crypto passthrough enablement configuration"
 }
+
+variable "MOCK_VAULTS" {
+  type = list(object({
+    vault_id     = string
+    mock_phrase  = string
+  }))
+  description = "List of mock vault configurations"
+  default     = []
+}

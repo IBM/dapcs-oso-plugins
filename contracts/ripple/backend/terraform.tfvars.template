@@ -9,6 +9,13 @@ COLD_BRIDGE_IMAGE="registry.control23.dap.local/metaco-ripple/vault-cold-bridge@
 COLD_VAULT_IMAGE="registry.control23.dap.local/metaco-ripple/vault-releases@sha256:"
 KMSCONNECT_IMAGE="registry.control23.dap.local/metaco-ripple/kms-ibm@sha256:"
 
+MOCK_VAULTS = [
+  {
+    vault_id    = ""
+    mock_phrase = ""
+  }
+]
+
 # Vault Configuration
 VAULT_ID=""
 NOTARY_MESSAGING_PUBLIC_KEY=""
