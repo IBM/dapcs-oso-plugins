@@ -72,5 +72,5 @@ variable "DOMAIN_ID" {
 variable "BASE_URL" {
   type        = string
   description = "address of the Haven UI"
-  default     = "http://app.digitalassets.ibm.com/"
+  default     = "https://app.digitalassets.ibm.com/"
 }
