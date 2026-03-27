@@ -60,15 +60,20 @@ class Plugin(PluginProtocol):
         try:
             match self.mode:
                 case "frontend":
+                    logger.info(f"Debug Sai 1")
                     operations = get(get_operations_endpoint(FRONTEND_PORT))
+                    logger.info(f"Debug Sai 4")
                     for op in operations:
+                        logger.info(f"Debug Sai 5")
                         id = op["uuid"]
                         assert id
                         if id not in self.frontendknownids:
+                            logger.info(f"Debug Sai 6")
+                            test_metadata = { "walletId" : "test", "url" : "testurl"}
                             docs.append(V1_3.Document(
                                 id=id,
                                 content=json.dumps(op),
-                                metadata=""))
+                                metadata=test_metadata))
                             self.frontendknownids.append(id)
                         else:
                             logger.debug(f"to_oso() ignoring operation handled previoulsy: id={id}")
@@ -172,10 +177,13 @@ def post(url: str, data: any) -> None:
 
 
 def get(url: str) -> any:
+    logger.info(f"Debug Sai 2")
     logger.debug(f"get(): {url=}")
     response = requests.get(url=url, timeout=2)
     response.raise_for_status()
     if response.text:
+        logger.info(f"Debug Sai 3")
+        logger.info(f"Response text Sai: {response.text}")
         return json.loads(response.text)
     return []
 
