@@ -113,10 +113,11 @@ class Plugin(PluginProtocol):
                     if responses:
                         for key, value in responses.items():
                             if key not in self.backendknownids:
+                                metadata_value = self.build_metadata(value)
                                 docs.append(V1_3.Document(
                                     id=key,
                                     content=json.dumps(value),
-                                    metadata=""))
+                                    metadata=metadata_value))
                                 self.backendknownids.append(key)
                             else:
                                 logger.debug(f"to_oso() ignoring operation handled previoulsy: id={key}")
