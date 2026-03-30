@@ -67,23 +67,24 @@ variable "TOKEN_EXP" {
 variable "OSOENCRYPTIONPASS" {
   type        = string
   description = "Encrypt data through the iteration pipeline (should be same value as backend plugin)"
-  default     = ""
+  #default     = ""
+  sensitive = true
 }
 
 variable "HMZ_USER_SK" {
   type = string
   description = "Private (secret) key of a registered user used to login to Ripple"
-  default     = ""
+  #default     = ""
 }
 
 variable "HMZ_AUTH_PATH" {
   type = string
   description = "Harmonize path to get auth toekn"
-  default = "/token"
+  #default = "/token"
 }
 
 variable "HMZ_AUTH_CUSTOMERID" {
   type = string
   description = "Harmonize customer id used to authent"
-  default = "customer_api"
+  #default = "customer_api"
 }
