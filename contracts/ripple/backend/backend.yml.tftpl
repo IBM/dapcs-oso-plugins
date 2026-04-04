@@ -14,6 +14,10 @@ spec:
         # This must be same as VAULT_ID below
         - name: Vault__Ids__0
           value: "${tpl.vault_id}"
+%{ for i, vault in tpl.mock_vaults ~}
+        - name: Vault__Ids__${i + 1}
+          value: "${vault.vault_id}"
+%{ endfor ~}
         # Passphrase: "{{EMPTY}}" is needed so that the bridge data is not cyphered and can be managed by OSO
         - name: Passphrase
           value: "${tpl.passphrase}"
@@ -29,6 +33,8 @@ spec:
         - name: cert
           mountPath: /data/cert
           readOnly: true
+        - name: ibm-cfg
+          mountPath: /app/cfg/ibm.cfg
 
     - name: cold-vault
       image: ${tpl.cold_vault_image}
@@ -36,18 +42,36 @@ spec:
         - name: PLATFORM
           value: "kms"
         - name: VAULT_BRIDGE_LOGLEVEL
-          value: "7"
+          value: "6"
         - name: VAULT_CORE_LOGLEVEL
-          value: "7"
+          value: "3"
         - name: VAULT_KMS_ENDPOINT
           value: "localhost:10000"
         - name: VAULT_TRUSTED_SIG
-          value: "pem:${tpl.notary_messaging_public_key}"
+          value: "${tpl.notary_messaging_public_key}"
         - name: VAULT_ID
           value: "${tpl.vault_id}"
         # This comes from the docker container that is spun up above. If it's normal vault, then it would be API end point.
         - name: HARMONIZE_CORE_ENDPOINT
           value: "http://localhost:8080/internal/v1"
+        - name: HMZ_FEATURE_OPTIONAL_MAXIMUM_FEE
+          value: "true"
+
+%{ for i, vault in tpl.mock_vaults ~}
+    - name: vault-releases-${i}
+      image: ${tpl.cold_vault_image}
+      env:
+        - name: PLATFORM
+          value: "mock"
+        - name: MOCK_PHRASE
+          value: "${vault.mock_phrase}"
+        - name: TRUSTED_SIG
+          value: "ed25519:50692dfa472f013e2f87e5d210be40cefe178e33787be4688d5da0afe06ed149"
+        - name: VAULT_ID
+          value: "${vault.vault_id}"
+        - name: HARMONIZE_CORE_ENDPOINT
+          value: "http://localhost:8080/internal/v1"
+%{ endfor ~}
 
     - name: backend-plugin
       image: ${tpl.backend_plugin_image}
@@ -60,6 +84,8 @@ spec:
           value: "backend_plugin"
         - name: SEED
           value: "${tpl.seed}"
+        - name: OSOENCRYPTIONPASS
+          value: "${tpl.seed}"
         - name: BACKEND_ENDPOINT
           value: "http://localhost:8080"
         - name: PORT
@@ -67,7 +93,6 @@ spec:
       ports:
         - containerPort: 4000
           hostPort: 4000
-
 
 %{ if tpl.enable_ep11server }
     - name: ep11server

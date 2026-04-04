@@ -15,6 +15,7 @@
 
 variable "PREFIX" {
   type        = string
+  default     = ""
 }
 
 variable "DEBUG" {
@@ -23,7 +24,7 @@ variable "DEBUG" {
   default     = false
 }
 
-variable "SEED" {
+variable "OSOENCRYPTIONPASS" {
   type        = string
   description = "Encrypt data through the iteration pipeline (should be the same value as frontend plugin)"
   default     = ""
@@ -186,4 +187,13 @@ variable "CRYPTO_PASSTHROUGH_ENABLEMENT" {
   type = bool
   default = true
   description = "Crypto passthrough enablement configuration"
+}
+
+variable "MOCK_VAULTS" {
+  type = list(object({
+    vault_id     = string
+    mock_phrase  = string
+  }))
+  description = "List of mock vault configurations"
+  default     = []
 }
