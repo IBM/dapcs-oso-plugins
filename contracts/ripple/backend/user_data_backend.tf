@@ -46,7 +46,7 @@ resource "local_file" "podman-play" {
       cold_bridge_image = var.COLD_BRIDGE_IMAGE,
       cold_vault_image = var.COLD_VAULT_IMAGE,
       kmsconnect_image = var.KMSCONNECT_IMAGE,
-      vault_id = var.VAULT_ID,
+      vaults = var.VAULTS,
       passphrase = var.PASSPHRASE,
       notary_messaging_public_key = var.NOTARY_MESSAGING_PUBLIC_KEY,
       cold_bridge_endpoint = var.COLD_BRIDGE_ENDPOINT,
@@ -54,7 +54,6 @@ resource "local_file" "podman-play" {
       enable_ep11server = var.INTERNAL_GREP11,
       crypto_pass_enable = var.CRYPTO_PASSTHROUGH_ENABLEMENT,
       grep11_image = var.GREP11_IMAGE,
-      mock_vaults = var.MOCK_VAULTS, 
     } },
   )
   filename = "podman-play/play.yml"

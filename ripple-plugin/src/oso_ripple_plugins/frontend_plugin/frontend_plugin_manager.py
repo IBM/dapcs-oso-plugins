@@ -245,17 +245,26 @@ class FrontendPluginManager:
         return documents
 
     def bulk_upload(self, documents):
-        vaults = []
-        transactions = []
-        accounts = []
-        manifests = []
+        v_tx = {}
+        v_ac = {}
+        v_ma = {}
+        v_vaults = {}
 
         self.logger.info("Saving documents for bulk upload")
-        contents = json.loads(document["content"])
         for document in documents:
             try:
+                contents = json.loads(document["content"])
+                vaultid = contents.get("vaultId")
+                
+                if vaultid not in v_tx:
+                    v_tx[vaultid] = []
+                    v_ac[vaultid] = []
+                    v_ma[vaultid] = []
+                    v_vaults[vaultid] = []
+                
                 document_id = document["id"]
                 self.logger.info(f"Saving document {document_id} for bulk upload")
+                
                 # Decrypt content
                 if self.seed:
                     for section in ("transactions", "accounts", "manifests"):
@@ -263,44 +272,50 @@ class FrontendPluginManager:
                             if "signedPayloadCiphered" in item:
                                 item["signedPayload"] = crypt.decrypt(item["signedPayloadCiphered"], self.seed)
                                 del item["signedPayloadCiphered"]
-
-                transactions.extend(contents.get("transactions", []))
-                accounts.extend(contents.get("accounts", []))
-                manifests.extend(contents.get("manifests", []))
-                vaults.extend(contents.get("vaults", []))
-
-                self.logger.info(
-                    f"Successfully saved document {document_id} for bulk upload"
-                )
+                
+                v_tx[vaultid].extend(contents.get("transactions", []))
+                v_ac[vaultid].extend(contents.get("accounts", []))
+                v_ma[vaultid].extend(contents.get("manifests", []))
+                v_vaults[vaultid].extend(contents.get("vaults", []))
+                
+                self.logger.info(f"Successfully saved document {document_id} for bulk upload")
             except Exception as e:
                 self.logger.exception(e)
                 continue
 
-        content = {
-            "accounts": accounts,
-            "transactions": transactions,
-            "manifests": manifests,
-            "vaults": vaults,
-        }
-
         self.logger.info("Performing bulk upload to frontend")
         token = self.get_token()
-        try:
-            with tempfile.NamedTemporaryFile(mode="w", delete=False) as vault_file:
-                json.dump(content, vault_file)
+        
+        # Upload each vault separately
+        for vaultid in v_tx.keys():
+            content = {
+                "vaultId": vaultid,
+                "accounts": v_ac[vaultid],
+                "transactions": v_tx[vaultid],
+                "manifests": v_ma[vaultid],
+                "vaults": v_vaults[vaultid],
+            }
+            
+            try:
+                with tempfile.NamedTemporaryFile(mode="w", delete=False) as vault_file:
+                    json.dump(content, vault_file)
 
-            files = {"files": open(vault_file.name, "rb")}
-            response = requests.post(
-                url=f"https://{self.hmz_api_hostname}/v1/vaults/operations/signed",
-                headers={"Authorization": "Bearer " + token},
-                files=files,
-                verify=self.verify,
-            )
-            response.raise_for_status()
-        except Exception as e:
-            raise e
-        finally:
-            os.remove(vault_file.name)
+                files = {"files": open(vault_file.name, "rb")}
+                response = requests.post(
+                    url=f"https://{self.hmz_api_hostname}/v1/vaults/operations/signed",
+                    headers={"Authorization": "Bearer " + token},
+                    files=files,
+                    verify=self.verify,
+                )
+                response.raise_for_status()
+                self.logger.info(f"Successfully uploaded vault {vaultid}")
+            except requests.HTTPError as http_err:
+                self.logger.error(f"HTTP error uploading vault {vaultid}: {http_err} - {response.text}")
+            except Exception as err:
+                self.logger.error(f"Unexpected error uploading vault {vaultid}: {err}")
+            finally:
+                os.remove(vault_file.name)
+        
         self.logger.info("Bulk upload finished successfully")
 
     def backend_status(self):
