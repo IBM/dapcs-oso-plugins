@@ -56,15 +56,21 @@ variable "KMSCONNECT_IMAGE" {
   description = "KMS connect image containing registry"
 }
 
-variable "VAULT_ID" {
-  type = string
-  description = "Vault ID"
+variable "VAULTS" {
+  type = list(object({
+    vault_id         = string
+    phrase           = string
+    platform         = string
+    log_level        = optional(string, "")
+    vault_log_level  = optional(string, "")
+  }))
+  description = "List of vault configurations (supports 1 to N vaults). Platform can be 'kms' or 'mock'"
 }
 
 variable "PASSPHRASE" {
-  type = string
-  default = "{{EMPTY}}"
-  description = "Required to enable plugin to view content within a JSON format"
+  type        = string
+  description = "Passphrase for cold-bridge. Use '{{EMPTY}}' so that the bridge data is not cyphered and can be managed by OSO"
+  default     = "{{EMPTY}}"
 }
 
 variable "NOTARY_MESSAGING_PUBLIC_KEY" {
@@ -199,13 +205,4 @@ variable "CRYPTO_PASSTHROUGH_ENABLEMENT" {
   type = bool
   default = true
   description = "Crypto passthrough enablement configuration"
-}
-
-variable "MOCK_VAULTS" {
-  type = list(object({
-    vault_id     = string
-    mock_phrase  = string
-  }))
-  description = "List of mock vault configurations"
-  default     = []
 }

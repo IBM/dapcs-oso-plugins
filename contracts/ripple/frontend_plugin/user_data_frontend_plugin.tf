@@ -19,7 +19,7 @@ resource "local_file" "frontend_plugin_podman_play" {
     { tpl = {
       image             = var.FRONTEND_PLUGIN_IMAGE,
       HMZ_USER_SK       = var.HMZ_USER_SK,
-      VAULTID           = var.VAULT_ID,
+      VAULTID = join(" ", var.VAULT_IDS),
       HMZ_AUTH_HOSTNAME = var.HMZ_AUTH_HOSTNAME,
       HMZ_API_HOSTNAME  = var.HMZ_API_HOSTNAME,
       HMZ_AUTH_PATH = var.HMZ_AUTH_PATH,

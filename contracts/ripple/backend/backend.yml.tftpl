@@ -11,22 +11,25 @@ spec:
     - name: cold-bridge
       image: ${tpl.cold_bridge_image}
       env:
-        # This must be same as VAULT_ID below
-        - name: Vault__Ids__0
-          value: "${tpl.vault_id}"
-%{ for i, vault in tpl.mock_vaults ~}
-        - name: Vault__Ids__${i + 1}
+         # Dynamic vault IDs - supports 1 to N vaults
+%{ for i, vault in tpl.vaults ~}
+        - name: Vault__Ids__${i}
           value: "${vault.vault_id}"
 %{ endfor ~}
         # Passphrase: "{{EMPTY}}" is needed so that the bridge data is not cyphered and can be managed by OSO
         - name: Passphrase
-          value: "${tpl.passphrase}"
+          value: "{{EMPTY}}"
       volumeMounts:
         - name: app-data
           mountPath: /App_Data
 
     - name: kmsconnect
       image: ${tpl.kmsconnect_image}
+      env:
+        - name: VAULT_BRIDGE_LOGLEVEL
+          value: "6"
+        - name: VAULT_CORE_LOGLEVEL
+          value: "3"
       volumeMounts:
         - name: ibm-cfg
           mountPath: /opt/kms/cfg/ibm.cfg
@@ -36,41 +39,47 @@ spec:
         - name: ibm-cfg
           mountPath: /app/cfg/ibm.cfg
 
-    - name: cold-vault
+%{ for i, vault in tpl.vaults ~}
+    - name: vault-${i}
       image: ${tpl.cold_vault_image}
       env:
         - name: PLATFORM
-          value: "kms"
+          value: "${vault.platform}"
         - name: VAULT_BRIDGE_LOGLEVEL
           value: "6"
         - name: VAULT_CORE_LOGLEVEL
           value: "3"
         - name: VAULT_KMS_ENDPOINT
           value: "localhost:10000"
+%{ if vault.platform == "mock" ~}
+        - name: MOCK_PHRASE
+          value: "${vault.phrase}"
+%{ endif ~}
         - name: VAULT_TRUSTED_SIG
           value: "${tpl.notary_messaging_public_key}"
-        - name: VAULT_ID
-          value: "${tpl.vault_id}"
-        # This comes from the docker container that is spun up above. If it's normal vault, then it would be API end point.
-        - name: HARMONIZE_CORE_ENDPOINT
-          value: "http://localhost:8080/internal/v1"
-        - name: HMZ_FEATURE_OPTIONAL_MAXIMUM_FEE
-          value: "true"
-
-%{ for i, vault in tpl.mock_vaults ~}
-    - name: vault-releases-${i}
-      image: ${tpl.cold_vault_image}
-      env:
-        - name: PLATFORM
-          value: "mock"
-        - name: MOCK_PHRASE
-          value: "${vault.mock_phrase}"
-        - name: TRUSTED_SIG
-          value: "ed25519:50692dfa472f013e2f87e5d210be40cefe178e33787be4688d5da0afe06ed149"
         - name: VAULT_ID
           value: "${vault.vault_id}"
         - name: HARMONIZE_CORE_ENDPOINT
           value: "http://localhost:8080/internal/v1"
+        - name: HMZ_FEATURE_OPTIONAL_MAXIMUM_FEE
+          value: "true"
+%{ if vault.log_level != "" ~}
+        - name: HMZ_LOG_LEVEL
+          value: "${vault.log_level}"
+%{ endif ~}
+%{ if vault.vault_log_level != "" ~}
+        - name: VAULT_LOG_LEVEL
+          value: "${vault.vault_log_level}"
+%{ endif ~}
+%{ if vault.platform == "mock" ~}
+      volumeMounts:
+        - name: mock-cfg-vault
+          mountPath: /opt/vault-core/cfg/vault.cfg
+          subPath: vault.cfg
+        - name: mock-cfg-mock
+          mountPath: /opt/vault-core/cfg/mock.cfg
+          subPath: mock.cfg
+%{ endif ~}
 %{ endfor ~}
 
     - name: backend-plugin
@@ -134,6 +143,20 @@ spec:
         path: ./cert
         type: Directory
 
+    - name: mock-cfg-vault
+      configMap:
+        name: mock-vault-config
+        items:
+          - key: vault.cfg
+            path: vault.cfg
+
+    - name: mock-cfg-mock
+      configMap:
+        name: mock-vault-config
+        items:
+          - key: mock.cfg
+            path: mock.cfg
+
 %{~ if tpl.enable_ep11server ~}
 %{ if !tpl.crypto_pass_enable }
     - name: cfg
@@ -158,3 +181,4 @@ spec:
         type: CharDevice
 
 %{~ endif ~}
+

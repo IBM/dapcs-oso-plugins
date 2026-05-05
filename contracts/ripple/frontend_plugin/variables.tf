@@ -37,9 +37,9 @@ variable "SEED" {
   default     = ""
 }
 
-variable "VAULT_ID" {
-  type = string
-  description = "Ripple vault id"
+variable "VAULT_IDS" {
+  type        = list(string)
+  description = "List of Ripple vault IDs (supports 1 to N vaults)"
 }
 
 variable "HMZ_AUTH_HOSTNAME" {
