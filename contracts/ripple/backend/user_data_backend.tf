@@ -84,7 +84,10 @@ resource "null_resource" "crypto_deps" {
 # archive of the folder containing docker-compose file. This folder could create additional resources such as files
 # to be mounted into containers, environment files etc. This is why all of these files get bundled in a tgz file (base64 encoded)
 resource "hpcr_tgz" "workload" {
-  depends_on = [local_file.podman-play]
+  depends_on = [
+	local_file.podman-play,
+	local_file.mock-vault-configmap,
+  ]
   folder = "podman-play"
 }
 
@@ -177,6 +180,22 @@ resource "local_file" "c16_client_key" {
   count = (var.INTERNAL_GREP11 && !var.CRYPTO_PASSTHROUGH_ENABLEMENT) ? 1 : 0
   content = var.C16_CLIENT_KEY
   filename = "${path.module}/podman-play/cfg/c16client-key.pem"
+  file_permission = "0664"
+}
+
+resource "local_file" "mock-vault-configmap" {
+  content         = <<-EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mock-vault-config
+data:
+  vault.cfg: |
+    # Mock vault configuration
+  mock.cfg: |
+    # Mock configuration
+EOF
+  filename        = "podman-play/mock-vault-configmap.yml"
   file_permission = "0664"
 }
 
