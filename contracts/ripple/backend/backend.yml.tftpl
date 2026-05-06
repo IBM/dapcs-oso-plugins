@@ -11,7 +11,7 @@ spec:
     - name: cold-bridge
       image: ${tpl.cold_bridge_image}
       env:
-         # Dynamic vault IDs - supports 1 to N vaults
+        # Dynamic vault IDs - supports 1 to N vaults
 %{ for i, vault in tpl.vaults ~}
         - name: Vault__Ids__${i}
           value: "${vault.vault_id}"
@@ -33,11 +33,11 @@ spec:
       volumeMounts:
         - name: ibm-cfg
           mountPath: /opt/kms/cfg/ibm.cfg
+        - name: ibm-cfg
+          mountPath: /app/cfg/ibm.cfg
         - name: cert
           mountPath: /data/cert
           readOnly: true
-        - name: ibm-cfg
-          mountPath: /app/cfg/ibm.cfg
 
 %{ for i, vault in tpl.vaults ~}
     - name: vault-${i}
@@ -181,4 +181,3 @@ spec:
         type: CharDevice
 
 %{~ endif ~}
-
