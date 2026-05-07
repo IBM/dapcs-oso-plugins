@@ -21,6 +21,7 @@ dependencies = [
     "pydantic",
     "pydantic-settings",
     "gunicorn>=23.0.0",
+    "python-dotenv>=1.2.2",
 ]
 
 [project.optional-dependencies]

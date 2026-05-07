@@ -51,8 +51,10 @@ pydantic-core==2.41.5
     # via pydantic
 pydantic-settings==2.12.0
     # via ibm-haven-oso-plugin
-python-dotenv==1.2.1
-    # via pydantic-settings
+python-dotenv==1.2.2
+    # via
+    #   ibm-haven-oso-plugin
+    #   pydantic-settings
 referencing==0.37.0
     # via
     #   jsonschema
