@@ -74,3 +74,9 @@ variable "BASE_URL" {
   description = "address of the Haven UI"
   default     = "https://app.digitalassets.ibm.com"
 }
+
+variable "GOVERNANCE_ENGINE_ENABLED" {
+  type        = bool
+  description = "Enable Governance Engine Configuration"
+  default     = false
+}

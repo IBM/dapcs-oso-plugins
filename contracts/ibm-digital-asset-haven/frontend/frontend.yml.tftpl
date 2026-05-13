@@ -44,9 +44,6 @@ spec:
       volumeMounts:
         - mountPath: /tls
           name: tls_vol
-        - mountPath: /signing-integrity
-          name: signing-integrity
-          readOnly: true
       command:
         - hsm-driver
         - "--proxy-addr"
@@ -61,9 +58,6 @@ spec:
         - "/tls/client.cert.pem"
         - "--client-key"
         - "/tls/client.key.pem"
-        %{if tpl.governance_engine_enabled != false}
-        - "--signing-integrity-public-key=/signing-integrity/pubkey.pem"
-        %{endif} 
       env:
         - name: LOGS_FILTER
           value: info,hsm_driver=trace,hsm_driver_bin=trace
@@ -72,7 +66,3 @@ spec:
         path: ./tls
         type: Directory
       name: tls_vol
-    - hostPath:
-        path: ./signing-integrity
-        type: FileOrCreate
-      name: signing-integrity
