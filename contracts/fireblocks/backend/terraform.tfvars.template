@@ -8,6 +8,7 @@ BACKEND_PLUGIN_IMAGE="registry.control23.dap.local/oso/dapcs-fireblocks-oso-plug
 
 # Signing Server Configuration
 WORKLOAD_VOL_SEED="fb_vaultseed1"
+WORKLOAD_VOLUME_PREV_SEED=""
 
 
 # Crypo passthough Configuration

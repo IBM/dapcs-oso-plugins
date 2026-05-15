@@ -47,6 +47,12 @@ variable "WORKLOAD_VOL_SEED" {
   description = "Workload volume encryption seed"
 }
 
+variable "WORKLOAD_VOLUME_PREV_SEED" {
+  type        = string
+  description = "Previous Workload Seed phrase for conductor disk volume."
+  default     = ""
+}
+
 variable "INTERNAL_GREP11" {
   type = bool
   default = true
