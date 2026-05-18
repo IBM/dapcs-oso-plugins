@@ -46,9 +46,6 @@ spec:
         mountPath: /var/lib/
       - name: crypto-device
         mountPath: /dev/z90crypt
-      - name: signing-integrity
-        mountPath: /signing-integrity
-        readOnly: true
       command:
         - "hsm-driver"
         - "--pregen-keys"
@@ -57,9 +54,6 @@ spec:
         - "pkcs11"
         - "--ibm-oso-bind-http"
         - "0.0.0.0:3003"
-        %{if tpl.governance_engine_enabled != false}
-        - "--signing-integrity-public-key=/signing-integrity/pubkey.pem"
-        %{endif}
       env:
         - name: LOGS_FILTER
           value: "info,hsm_driver=${tpl.log_level},hsm_driver_bin=${tpl.log_level},pkcs11_vendor=${tpl.log_level}"
@@ -76,7 +70,3 @@ spec:
         path: /dev/z90crypt
         type: CharDevice
       name: crypto-device
-    - hostPath:
-        path: ./signing-integrity
-        type: FileOrCreate
-      name: signing-integrity

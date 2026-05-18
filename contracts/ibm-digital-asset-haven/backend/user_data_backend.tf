@@ -24,7 +24,6 @@ resource "local_file" "backend_podman_play" {
       log_level = var.LOG_LEVEL,
       domain_id = var.DOMAIN_ID,
       base_url = var.BASE_URL,
-      governance_engine_enabled = var.GOVERNANCE_ENGINE_ENABLED,
     } },
   )
   filename = "backend/podman-play.yml"
