@@ -19,11 +19,16 @@ locals {
     "type" : "workload",
     "images": {},
     "volumes": {
-        (var.VOLUME_NAME): {
+        (var.VOLUME_NAME): merge(
+         {
             "filesystem": "ext4",
             "mount": "/data",
             "seed": var.WORKLOAD_VOL_SEED,
-        }
+        },
+       length(var.WORKLOAD_VOLUME_PREV_SEED) > 0 ?
+       { previousSeed = var.WORKLOAD_VOLUME_PREV_SEED } :
+       {}
+       )
     }
   }
 }

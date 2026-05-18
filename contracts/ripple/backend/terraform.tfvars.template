@@ -13,6 +13,7 @@ KMSCONNECT_IMAGE="registry.control23.dap.local/metaco-ripple/kms-ibm@sha256:"
 VAULT_ID=""
 NOTARY_MESSAGING_PUBLIC_KEY=""
 WORKLOAD_VOL_SEED="vaultseed1"
+WORKLOAD_VOLUME_PREV_SEED=""
 
 # Update volume name if it is different from default value vault_vol
 # VOLUME_NAME = ""
