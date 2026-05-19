@@ -2,3 +2,5 @@
 FRONTEND_PLUGIN_IMAGE="192.168.0.9/oso/dapcs-haven-oso-plugins@sha256:"
 HSMDRIVER_IMAGE="192.168.0.9/oso/hsm-signer-driver@sha256:"
 
+#To Enable Gov Eng
+GOVERNANCE_ENGINE_ENABLED=""
