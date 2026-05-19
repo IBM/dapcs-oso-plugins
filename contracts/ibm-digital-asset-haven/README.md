@@ -85,8 +85,6 @@ The encrypted workload will be used within OSO when deploying the backend during
     - `HSMDRIVER_IMAGE` - HSM Driver image with sha256 digest
     - `WORKLOAD_VOL_SEED` - The Workload volume encryption seed (important: see Note below)
     - `WORKLOAD_VOLUME_PREV_SEED` - Change the Workload volume prev encryption seed.
-    - `USER_PIN` - The PKCS11 normal user PIN
-    - `SO_PIN` - The PKCS11 SO PIN
     - `HPCR_CERT` - Certificate value of HPVS Image (optional)
 
 3. To generate the encrypted workload, change to the `contracts` directory and run:

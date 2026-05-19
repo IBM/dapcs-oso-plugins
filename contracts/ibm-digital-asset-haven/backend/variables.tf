@@ -46,19 +46,31 @@ variable "HSMDRIVER_IMAGE" {
   description = "HSM Driver image name"
 }
 
-variable "USER_PIN" {
-  type        = string
-  description = "PKCS11 normal user PIN"
-}
-
-variable "SO_PIN" {
-  type        = string
-  description = "PKCS11 SO PIN"
-  default     = "87654321"
-}
-
 variable "WORKLOAD_VOLUME_PREV_SEED" {
   type        = string
   description = "Previous Workload Seed phrase for conductor disk volume."
   default     = ""
+}
+
+variable "PREGEN_KEYS" {
+  type        = number
+  description = "Number of Key-Pair to be generated at time of DB Provisioning"
+  default     = 1000
+}
+
+variable "LOG_LEVEL" {
+  type        = string
+  description = "Log Level for HSM Signer"
+  default     = "info"
+}
+
+variable "DOMAIN_ID" {
+  type        = string
+  description = "Domain Id of Crypto Card"
+}
+
+variable "BASE_URL" {
+  type        = string
+  description = "address of the Haven UI"
+  default     = "https://app.digitalassets.ibm.com"
 }

@@ -21,6 +21,7 @@ import json
 import logging
 import requests
 import sys
+import os
 
 from typing import Literal
 
@@ -51,6 +52,39 @@ class Plugin(PluginProtocol):
     def mode(self) -> Literal["frontend", "backend"]:
         return current_oso_plugin().config.mode
 
+    def build_metadata(self, data: dict) -> dict:
+        user_action = data.get("user_action", {})
+        kind = user_action.get("kind")
+        url = os.getenv("BASE_URL")
+
+        if kind == "SignTransfer":
+            transfer_id = user_action.get("transferId")
+            wallet_id = user_action.get("walletId")
+            metadata = {
+                "display_id": transfer_id,
+                "launch_url": (
+                    f"{url}/v3/operations/wallets/"
+                    f"{wallet_id}/transfers/{transfer_id}"
+                )
+            }
+            return metadata
+
+        elif kind == "SignTransaction":
+            transaction_id = user_action.get("transactionId")
+            wallet_id = user_action.get("walletId")
+            metadata = {
+                "display_id": transaction_id,
+                "launch_url": (
+                    f"{url}/v3/operations/wallets/"
+                    f"{wallet_id}/transactions/{transaction_id}"
+                )
+            }
+            return metadata
+
+        # Default fallback
+        return {}
+
+
     def to_oso(self) -> V1_3.DocumentList:
         logger.debug(f"Entering to_oso(): ({self.mode})")
 
@@ -65,10 +99,11 @@ class Plugin(PluginProtocol):
                         id = op["uuid"]
                         assert id
                         if id not in self.frontendknownids:
+                            metadata_value = self.build_metadata(op)
                             docs.append(V1_3.Document(
                                 id=id,
                                 content=json.dumps(op),
-                                metadata=""))
+                                metadata=metadata_value))
                             self.frontendknownids.append(id)
                         else:
                             logger.debug(f"to_oso() ignoring operation handled previoulsy: id={id}")
@@ -78,10 +113,11 @@ class Plugin(PluginProtocol):
                     if responses:
                         for key, value in responses.items():
                             if key not in self.backendknownids:
+                                metadata_value = self.build_metadata(value)
                                 docs.append(V1_3.Document(
                                     id=key,
                                     content=json.dumps(value),
-                                    metadata=""))
+                                    metadata=metadata_value))
                                 self.backendknownids.append(key)
                             else:
                                 logger.debug(f"to_oso() ignoring operation handled previoulsy: id={key}")
@@ -126,12 +162,44 @@ class Plugin(PluginProtocol):
             )
 
         else:
-             return V1_3.ComponentStatus(
+            status_url = f"http://localhost:3003/status"
+            try:
+                resp = requests.get(status_url, timeout=5)
+                resp.raise_for_status()
+
+                logger.debug(f"hsm-driver status successful!")
+
+            except Exception as err:
+                logger.debug(f"Error in HSM Driver Status response: {err}")
+
+                return V1_3.ComponentStatus(
+                    status_code=503,
+                    status="Waiting for HSM Driver Status",
+                    errors=[],
+                )
+
+            healthcheck_url = f"http://localhost:3003/healthcheck"
+            try:
+                resp = requests.get(healthcheck_url, timeout=5)
+                resp.raise_for_status()
+
+                logger.debug(f"hsm-driver healthcheck successful!")
+
+
+            except Exception as err:
+                logger.debug(f"Error in HSM Driver HealthCheck response: {err}")
+
+                return V1_3.ComponentStatus(
+                    status_code=503,
+                    status="Waiting for HSM Driver HealthCheck",
+                    errors=[],
+                )
+
+            return V1_3.ComponentStatus(
                 status_code=200,
                 status="OK",
                 errors=[],
             )
-
 
 def post(url: str, data: any) -> None:
     logger.debug(f"Entering post(): {url=}")

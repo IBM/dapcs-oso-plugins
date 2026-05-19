@@ -15,30 +15,30 @@
 
 resource "local_file" "ibm_cfg" {
   content = local.ibm_cfg
-  filename = "docker-compose/ibm.cfg"
+  filename = "podman-play/ibm.cfg"
   file_permission = "0664"
 }
 
 resource "local_file" "grep_ca" {
   content = var.INTERNAL_GREP11 ? tls_self_signed_cert.grep11_ca_cert.cert_pem : var.GREP11_CA
-  filename = "docker-compose/cert/ca.pem"
+  filename = "podman-play/cert/ca.pem"
   file_permission = "0664"
 }
 
 resource "local_file" "grep_client_key" {
   content = var.INTERNAL_GREP11 ? tls_private_key.client_key.private_key_pem_pkcs8 : var.GREP11_CLIENT_KEY
-  filename = "docker-compose/cert/client-key.pem"
+  filename = "podman-play/cert/client-key.pem"
   file_permission = "0664"
 }
 
 resource "local_file" "grep_client_cert" {
   content = var.INTERNAL_GREP11 ? tls_locally_signed_cert.client_cert.cert_pem : var.GREP11_CLIENT_CERT
-  filename = "docker-compose/cert/client.pem"
+  filename = "podman-play/cert/client.pem"
   file_permission = "0664"
 }
 
 
-resource "local_file" "docker_compose" {
+resource "local_file" "podman-play" {
   content = templatefile(
     "${path.module}/backend.yml.tftpl",
     { tpl = {
@@ -55,7 +55,7 @@ resource "local_file" "docker_compose" {
       grep11_image = var.GREP11_IMAGE,
     } },
   )
-  filename = "docker-compose/docker-compose.yml"
+  filename = "podman-play/play.yml"
   file_permission = "0664"
 
   depends_on = [
@@ -83,18 +83,18 @@ resource "null_resource" "crypto_deps" {
 # archive of the folder containing docker-compose file. This folder could create additional resources such as files
 # to be mounted into containers, environment files etc. This is why all of these files get bundled in a tgz file (base64 encoded)
 resource "hpcr_tgz" "workload" {
-  depends_on = [ local_file.docker_compose ]
-  folder = "docker-compose"
+  depends_on = [local_file.podman-play]
+  folder = "podman-play"
 }
 
 locals {
   grep11_endpoint = var.STATIC_IP ? var.GREP11_ENDPOINT: format("%s-cs-backend-grep11.control23.dap.local:9876", var.PREFIX)
   ibm_cfg = <<-EOT
     system = onprem
-    endpoint = ${var.INTERNAL_GREP11 ? "ep11server:9876" : local.grep11_endpoint}
+    endpoint = ${var.INTERNAL_GREP11 ? "localhost:9876": local.grep11_endpoint}
   EOT
   compose = {
-    "compose" : {
+    "play" : {
       "archive" : hpcr_tgz.workload.rendered
     }
   }
@@ -126,92 +126,92 @@ resource "local_file" "contract_encrypted" {
 resource "local_file" "grep11_cfg" {
   count = var.INTERNAL_GREP11 ? 1 : 0
   content = local.grep11_cfg
-  filename = "${path.module}/docker-compose/srv1/grep11server.yaml"
+  filename = "${path.module}/podman-play/srv1/grep11server.yaml"
   file_permission = "0664"
 }
 
 resource "local_file" "grep11_ca_cert" {
   count = var.INTERNAL_GREP11 ? 1 : 0
   content = tls_self_signed_cert.grep11_ca_cert.cert_pem
-  filename = "${path.module}/docker-compose/srv1/grep11ca.pem"
+  filename = "${path.module}/podman-play/srv1/grep11ca.pem"
   file_permission = "0664"
 }
 
 resource "local_file" "grep11_server_key" {
   count = var.INTERNAL_GREP11 ? 1 : 0
   content = tls_private_key.server_key.private_key_pem
-  filename = "${path.module}/docker-compose/srv1/grep11server-key.pem"
+  filename = "${path.module}/podman-play/srv1/grep11server-key.pem"
   file_permission = "0664"
 }
 
 resource "local_file" "grep11_server_cert" {
   count = var.INTERNAL_GREP11 ? 1 : 0
   content = tls_locally_signed_cert.server_cert.cert_pem
-  filename = "${path.module}/docker-compose/srv1/grep11server.pem"
+  filename = "${path.module}/podman-play/srv1/grep11server.pem"
   file_permission = "0664"
 }
 
 resource "local_file" "c16_client_cfg" {
   count = (var.INTERNAL_GREP11 && !var.CRYPTO_PASSTHROUGH_ENABLEMENT) ? 1 : 0
   content = local.c16_cfg
-  filename = "${path.module}/docker-compose/cfg/c16client.yaml"
+  filename = "${path.module}/podman-play/cfg/c16client.yaml"
   file_permission = "0664"
 }
 
 resource "local_file" "c16_ca_cert" {
   count = (var.INTERNAL_GREP11 && !var.CRYPTO_PASSTHROUGH_ENABLEMENT) ? 1 : 0
   content = var.C16_CA_CERT
-  filename = "${path.module}/docker-compose/cfg/ca.pem"
+  filename = "${path.module}/podman-play/cfg/ca.pem"
   file_permission = "0664"
 }
 
 resource "local_file" "c16_client_cert" {
   count = (var.INTERNAL_GREP11 && !var.CRYPTO_PASSTHROUGH_ENABLEMENT) ? 1 : 0
   content = var.C16_CLIENT_CERT
-  filename = "${path.module}/docker-compose/cfg/c16client.pem"
+  filename = "${path.module}/podman-play/cfg/c16client.pem"
   file_permission = "0664"
 }
 
 resource "local_file" "c16_client_key" {
   count = (var.INTERNAL_GREP11 && !var.CRYPTO_PASSTHROUGH_ENABLEMENT) ? 1 : 0
   content = var.C16_CLIENT_KEY
-  filename = "${path.module}/docker-compose/cfg/c16client-key.pem"
+  filename = "${path.module}/podman-play/cfg/c16client-key.pem"
   file_permission = "0664"
 }
 
 locals {
   c16_cfg = <<-EOT
-    loglevel: ${var.C16_CLIENT_LOGLEVEL}
-    servers:
-      - hostname: ${var.C16_CLIENT_HOST}
-        port: ${var.C16_CLIENT_PORT}
-        mTLS: true
-        server_cert_file: "/etc/c16/ca.pem"
-        client_key_file: "/etc/c16/c16client-key.pem"
-        client_cert_file: "/etc/c16/c16client.pem"
-  EOT
-  grep11_cfg = <<-EOT
-    logging:
-      levels:
-        entry: debug
-    ep11crypto:
-      enabled: true
-      connection:
-        address: 0.0.0.0
-        port: 9876
-        tls:
-          enabled: true
-          certfile: /cfg/grep11server.pem
-          keyfile: /cfg/grep11server-key.pem
-          mutual: true
-          cacert: /cfg/grep11ca.pem
-          cacertbytes:
-          certfilebytes:
-          keyfilebytes:
-        keepalive:
-          serverKeepaliveTime: 30
-          serverKeepaliveTimeout: 5
-      domain: "${var.DOMAIN}"
-  EOT
-}
+loglevel: ${var.C16_CLIENT_LOGLEVEL}
+servers:
+  - hostname: ${var.C16_CLIENT_HOST}
+    port: ${var.C16_CLIENT_PORT}
+    mTLS: true
+    server_cert_file: "/etc/c16/ca.pem"
+    client_key_file: "/etc/c16/c16client-key.pem"
+    client_cert_file: "/etc/c16/c16client.pem"
+EOT
 
+  grep11_cfg = <<-EOT
+logging:
+  levels:
+    entry: debug
+ep11crypto:
+  enabled: true
+  connection:
+    address: 0.0.0.0
+    port: 9876
+    tls:
+      enabled: true
+      certfile: /cfg/grep11server.pem
+      keyfile: /cfg/grep11server-key.pem
+      mutual: true
+      cacert: /cfg/grep11ca.pem
+      cacertbytes:
+      certfilebytes:
+      keyfilebytes:
+    keepalive:
+      serverKeepaliveTime: 30
+      serverKeepaliveTimeout: 5
+  domain: "${var.DOMAIN}"
+EOT
+}

@@ -21,6 +21,8 @@ resource "local_file" "frontend_podman_play" {
       plugin_image = var.FRONTEND_PLUGIN_IMAGE,
       hsmdriver_image = var.HSMDRIVER_IMAGE,
       proxy_address = var.PROXY_ADDRESS,
+      base_url = var.BASE_URL,
+      governance_engine_enabled = var.GOVERNANCE_ENGINE_ENABLED,
     } },
   )
   filename = "frontend/podman-play.yml"
