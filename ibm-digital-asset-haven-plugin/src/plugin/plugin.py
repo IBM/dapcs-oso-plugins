@@ -132,6 +132,14 @@ class Plugin(PluginProtocol):
 
     def to_isv(self, oso: V1_3.DocumentList) -> list[str]:
         logger.debug(f"entering to_isv: ({self.mode})")
+        
+        # Check HSM readiness before processing documents in backend mode
+        if self.mode == "backend":
+            hsm_status = self._check_hsm_ready()
+            if not hsm_status:
+                logger.error("HSM driver is not ready. Rejecting documents.")
+                raise Exception("HSM driver not ready - cannot process documents")
+        
         failedPosts=0
         for doc in oso.documents:
             try:
@@ -146,11 +154,37 @@ class Plugin(PluginProtocol):
 
             except Exception as e:
                 logger.error(f"ERROR: could not post document: {doc.id}, Error: {e}")
-                failures += 1
+                failedPosts += 1
                 continue
 
         logger.debug(f"to_isv() returning: {failedPosts=}")
+        
+        # Raise exception if any documents failed to post
+        if failedPosts > 0:
+            raise Exception(f"Failed to post {failedPosts} document(s)")
+        
         return ["OK"]
+    
+    def _check_hsm_ready(self) -> bool:
+        """Check if HSM driver is ready to accept documents"""
+        try:
+            # Check status endpoint
+            status_url = "http://localhost:3003/status"
+            resp = requests.get(status_url, timeout=5)
+            resp.raise_for_status()
+            logger.debug("HSM driver status check passed")
+            
+            # Check healthcheck endpoint
+            healthcheck_url = "http://localhost:3003/healthcheck"
+            resp = requests.get(healthcheck_url, timeout=5)
+            resp.raise_for_status()
+            logger.debug("HSM driver healthcheck passed")
+            
+            return True
+            
+        except Exception as err:
+            logger.warning(f"HSM driver not ready: {err}")
+            return False
 
 
     def status(self) -> V1_3.ComponentStatus:
