@@ -24,7 +24,7 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "click>=8.3.3",
     "urllib3>=2.7.0",
-    "idna>=3.15",
+    "idna>=3.7",
 ]
 
 [project.optional-dependencies]
