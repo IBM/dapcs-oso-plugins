@@ -2,5 +2,12 @@
 FRONTEND_PLUGIN_IMAGE="registry.control12.dap.local/oso/dapcs-fireblocks-oso-plugins@sha256:"
 FIREBLOCKS_AGENT_IMAGE="registry.control12.dap.local/oso/fireblocks-agent@sha256:"
 
+# Update volume name if it is different from default value frontend_vol
+# VOLUME_NAME = ""
+
+# Frontend Workload Volume Configuration
+WORKLOAD_VOL_SEED="fb_frontend_seed1"
+WORKLOAD_VOLUME_PREV_SEED=""
+
 # Fireblocks
 REFRESH_TOKEN=""

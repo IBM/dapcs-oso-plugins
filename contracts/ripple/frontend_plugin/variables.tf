@@ -69,3 +69,20 @@ variable "TOKEN_EXP" {
   description = "Ripple configured bearer token expiration (#h#m#s format)"
   default = "4h0m0s"
 }
+
+variable "VOLUME_NAME" {
+  type = string
+  description = "Volume name"
+  default = "frontend_vol"
+}
+
+variable "WORKLOAD_VOL_SEED" {
+  type = string
+  description = "Workload volume encryption seed"
+}
+
+variable "WORKLOAD_VOLUME_PREV_SEED" {
+  type        = string
+  description = "Previous Workload Seed phrase for conductor disk volume."
+  default     = ""
+}

@@ -62,6 +62,9 @@ class FBPlugin(PluginProtocol):
     class Config(BaseSettings):
         hot_mode: bool = False
         min_keys: int = 1
+        workload_vol_seed: str = ""
+        workload_volume_prev_seed: str = ""
+        volume_name: str = "frontend_vol"
         model_config = SettingsConfigDict(env_prefix="FB__")
 
     internalViews = {
