@@ -26,8 +26,10 @@ flask==3.1.3
     # via ibm-haven-oso-plugin
 gunicorn==23.0.0
     # via ibm-haven-oso-plugin
-idna==3.11
-    # via requests
+idna==3.16
+    # via
+    #   ibm-haven-oso-plugin
+    #   requests
 itsdangerous==2.2.0
     # via flask
 jinja2==3.1.6
