@@ -50,6 +50,7 @@ resource "local_file" "podman-play" {
       passphrase = var.PASSPHRASE,
       notary_messaging_public_key = var.NOTARY_MESSAGING_PUBLIC_KEY,
       seed = var.SEED,
+      cold_bridge_endpoint = var.COLD_BRIDGE_ENDPOINT,
       enable_ep11server = var.INTERNAL_GREP11,
       crypto_pass_enable = var.CRYPTO_PASSTHROUGH_ENABLEMENT,
       grep11_image = var.GREP11_IMAGE,

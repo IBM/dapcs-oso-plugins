@@ -15,6 +15,10 @@ NOTARY_MESSAGING_PUBLIC_KEY=""
 WORKLOAD_VOL_SEED="vaultseed1"
 WORKLOAD_VOLUME_PREV_SEED=""
 
+# Cold Bridge Endpoint Configuration
+# Default value points to the cold-bridge service running on localhost
+# COLD_BRIDGE_ENDPOINT="http://localhost:8080"
+
 # Update volume name if it is different from default value vault_vol
 # VOLUME_NAME = ""
 

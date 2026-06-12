@@ -33,23 +33,23 @@ urllib3.disable_warnings(InsecureRequestWarning)
 
 class BackendPluginManager:
     def __init__(self):
-        if "BACKEND_ENDPOINT" not in os.environ:
-            raise errors.ConfigError("BACKEND_ENDPOINT not found")
-        self.backend_endpoint = os.environ["BACKEND_ENDPOINT"]
+        self.cold_bridge_endpoint = os.environ.get("COLD_BRIDGE_ENDPOINT", 
+                "http://localhost:8080")
         self.seed = os.environ.get("SEED", "")
 
         logging.basicConfig(stream=sys.stdout, level=logging.INFO)
         self.logger = logging.getLogger(__name__)
+        self.logger.info(f"Cold-bridge endpoint configured as: {self.cold_bridge_endpoint}")
 
     def backend_status(self):
         response = requests.get(
-            f"{self.backend_endpoint}/v1/feed/status",
+            f"{self.cold_bridge_endpoint}/v1/feed/status",
             timeout=3,
         )
         response.raise_for_status()
 
     def bulk_download(self) -> List[Dict]:
-        response = requests.get(f"{self.backend_endpoint}/v1/feed/download?clean=True")
+        response = requests.get(f"{self.cold_bridge_endpoint}/v1/feed/download?clean=True")
         response.raise_for_status()
         response_json = response.json()
 
@@ -152,7 +152,7 @@ class BackendPluginManager:
 
             files = {"files": (vault_id, open(vault_file.name, "rb"))}
             response = requests.post(
-                url=f"{self.backend_endpoint}/v1/feed/upload",
+                url=f"{self.cold_bridge_endpoint}/v1/feed/upload",
                 files=files,
             )
             response.raise_for_status()
