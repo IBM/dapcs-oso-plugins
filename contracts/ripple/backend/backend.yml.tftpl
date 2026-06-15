@@ -60,10 +60,10 @@ spec:
           value: "backend_plugin"
         - name: SEED
           value: "${tpl.seed}"
-        - name: BACKEND_ENDPOINT
-          value: "http://localhost:8080"
         - name: PORT
           value: "4000"
+        - name: COLD_BRIDGE_ENDPOINT
+          value: "${tpl.cold_bridge_endpoint}"
       ports:
         - containerPort: 4000
           hostPort: 4000

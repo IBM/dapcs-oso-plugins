@@ -34,6 +34,12 @@ variable "BACKEND_PLUGIN_IMAGE" {
   description = "Backend plugin image containing registry"
 }
 
+variable "COLD_BRIDGE_ENDPOINT" {
+  type        = string
+  description = "Cold bridge endpoint URL for the cold bridge service"
+  default     = "http://localhost:8080"
+}
+
 variable "COLD_BRIDGE_IMAGE" {
   type = string
   description = "Cold bridge image containing registry"
