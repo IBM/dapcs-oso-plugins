@@ -58,9 +58,14 @@ spec:
 %{ if tpl.enable_ep11server }
     - name: ep11server
       image: ${tpl.grep11_image}
+      securityContext:
+        runAsUser: 0
+        privileged: true
       env:
         - name: PORT
           value: "9876"
+        - name: LD_LIBRARY_PATH
+          value: "/lib:/lib64:/usr/lib:/usr/lib64"
       volumeMounts:
         %{ if !tpl.crypto_pass_enable }
         - mountPath: /etc/c16
