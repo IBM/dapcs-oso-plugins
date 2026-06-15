@@ -53,6 +53,9 @@ OSO uses the encrypted workload to deploy the frontend (LPAR1) components during
 1. Edit the `terraform.tfvars` file and assign values to the following terraform variables:
     - `FRONTEND_PLUGIN_IMAGE` - Frontend plugin image with sha256 digest
     - `FIREBLOCKS_AGENT_IMAGE` - Fireblocks agent image with sha256 digest
+    - `FRONTEND_EKMF_ADDON_IMAGE` - EKMF addon image with sha256 digest
+    - `APPROVER_FINGERPRINTS` - Space-separated OpenSSH SHA256 fingerprints of the approver certificates allowed to call the EKMF import endpoints
+    - `APPROVER_CA_CERT` - CA certificate (PEM) that signed the approver client certificates
     - `MOBILE_GATEWAY_URL` - Mobile gateway url endpoint (default: https://mobile-api.fireblocks.io)
     - `REFRESH_TOKEN` - Refresh token for the API user (base64 encoded JSON)
 1. To generate the encrypted workload, change to the `contracts` directory and run:
@@ -63,9 +66,8 @@ OSO uses the encrypted workload to deploy the frontend (LPAR1) components during
 
 ### Prerequisites
 - The supporting infrastructure containing syslog/registry/etc across LPAR1-LPAR3.
-- Download OpenTofu and the required terraform providers (hpcr, tls, and local) from the Offline Signing Orchestrator release archive.
+- Download OpenTofu and the required terraform providers (hpcr and local) from the Offline Signing Orchestrator release archive.
 - A configured Crypto appliance accessible from HiperSocket34 network on LPAR3.
-- (Optional) Client certificates for a GREP11 instance deployed outside the backend pod.
 
 ### Generate encrypted workload
 The encrypted workload will be used within OSO when deploying along with the GREP11 services during a signing iteration process on LPAR3. Change to the `backend` directory and perform the following steps:
@@ -75,15 +77,13 @@ The encrypted workload will be used within OSO when deploying along with the GRE
 1. Edit the `terraform.tfvars` file and assign values to the following terraform variables:
     - `PREFIX` - Prefix used for OSO deployment
     - `BACKEND_PLUGIN_IMAGE` - Backend plugin image with sha256 (see above)
+    - `BACKEND_EKMF_ADDON_IMAGE` - EKMF addon image with sha256
     - `WORKLOAD_VOL_SEED` - Workload volume encryption seed
 
-#### GREP11 Configuration Options
-By default, the backend deploys an internal GREP11 instance in the VM. To use an external instance instead, disable the internal deployment and provide the GREP11 client credentials.
+#### GREP11 Configuration
+The backend deploys an internal GREP11 instance in the VM. GREP11 is only reachable from within the backend pod, and the plugin and the EKMF addon communicate with it over localhost using plain (non-TLS) gRPC.
 
-##### Internal GREP11 (Default)
-GREP11 will be running in the backend VM and will be communicated to over localhost.
-
-###### Copy grep11-c16 image to registry
+##### Copy grep11-c16 image to registry
 Download the grep11-c16 image, copy it to the private registry, and obtain the sha256 of the image.  See the [IBM Hyper Protect Virtual Servers Documentation](https://www.ibm.com/docs/en/hpvs/2.1.x?topic=dcenasee-downloading-crypto-express-network-api-secure-execution-enclaves-major-release) for steps to locate and download the image.
 
     - `GREP11_IMAGE` - GREP11-C16 image with sha256 (see above)
@@ -91,14 +91,6 @@ Download the grep11-c16 image, copy it to the private registry, and obtain the s
     - `C16_CA_CERT` - Crypto appliance CA certificate (certs/ca.pem)
     - `C16_CLIENT_CERT` - Crypto appliance client certificate (certs/c16client.pem)
     - `C16_CLIENT_KEY` - Crypto appliance client key (certs/c16client-key.pem)
-
-##### External GREP11
-
-    - `INTERNAL_GREP11` - should be set to `false`
-    - `GREP11_ENDPOINT` - endpoint for GREP11 (default: `<PREFIX>-cs-backend-grep11.control23.dap.local:9876`)
-    - `GREP11_CA` - GREP11 CA certificate
-    - `GREP11_CLIENT_KEY` - GREP11 client key
-    - `GREP11_CLIENT_CERT` - GREP11 client certificate
 
 1. To generate the encrypted workload, change to the `contracts` directory and run:
 
@@ -116,11 +108,14 @@ Note: update the `env_seed` and `volume_path` within the backend workload sectio
 
 ## Signing Key Registration Process
 
-Before deploying workloads with OSO, you must register the signing keys manually. The process requires running an empty signing iteration with OSO.
+Before deploying workloads with OSO, you must import the externally created signing keys and register them manually. The signing keys are created outside of OSO on an EKMF workstation and imported into the backend HSM through the EKMF addon. The import spans two OSO iterations.
 
 ### Prerequisites
 - Supporting infrastructure containing syslog/registry/etc across LPAR1-LPAR3 with hipersocket networks defined.
-- Conductor fully deployed and initialized with the required frontend/backend workloads.
+- Conductor fully deployed and initialized with the required frontend/backend workloads (including the EKMF addon containers).
+- Signing keys created on an EKMF workstation: one `ECDSA_SECP256K1` key and one `EDDSA_ED25519` key.
+  - The EKMF key labels become the Fireblocks signing key ids (`signingDeviceKeyId`), so choose them accordingly.
+  - Export the public key of each signing key in PEM format; these are registered with Fireblocks later.
 
 ### Bootstrap Backend
 1. Login to LPAR3 (temporarily attach a network if required to access LPAR3 as part of the setup process)
@@ -131,17 +126,47 @@ Before deploying workloads with OSO, you must register the signing keys manually
 1. Refresh the pool:
 
     `virsh pool-refresh --pool images`
-1. After deploying the Conductor and initializing the frontend components, run an empty signing iteration:
+
+### Import the EKMF signing keys
+
+The EKMF import API is served by the frontend plugin proxy on port 4000 and requires an approver client certificate over mTLS: the certificate must be signed by the configured `APPROVER_CA_CERT` and its fingerprint must be listed in `APPROVER_FINGERPRINTS`. Example: `curl -k --cert approver.crt --key approver-key.pem https://<frontend-plugin>:4000/api/ekmf/import/key`.
+
+#### Iteration 1 - generate the transport wrapping key
+1. Start the import sequence on the frontend plugin (from LPAR1):
+
+    `POST https://<frontend-plugin>:4000/api/ekmf/import/init`
+1. Run an empty signing iteration:
 
     `oso_cli.py <prefix> operator --cert <admin-cert> --key <admin-key> --cacert <cacert> run --allow_empty`
-1. Monitor the startup logs of the signing server and search for the public keys for both the `ECDSA_SECP256K1` and `EDDSA_ED25519` created keys. Copy and store the key id and the public signing keys. Example:
-    ```
-    INFO:fb.plugin:Key Type: 'SECP256K1', Key ID: '...', Public Key PEM: '-----BEGIN PUBLIC KEY-----...-----END PUBLIC KEY-----'
 
-    INFO:fb.plugin:Key Type: 'ED25519', Key ID: '...', Public Key PEM: '-----BEGIN PUBLIC KEY-----...-----END PUBLIC KEY-----'
-    ```
-1. OSO iteration should complete successfully
-1. Take a backup of volume `fb-vault-data.qcow2`. For disaster recovery planning purposes, this volume is critical and would need to be restored in order to resume signing operations.
+    The init document flows to the backend, which generates a non-extractable RSA-4096 transport wrapping key in the HSM and persists the wrapping key bundle to the backend data volume. The public wrapping key flows back to the frontend.
+1. Retrieve the transport wrapping public key:
+
+    `GET https://<frontend-plugin>:4000/api/ekmf/import/key`
+
+    The response contains the `key_id`, the base64-encoded DER `public_key`, and the `key_hash`. Verify the key hash out-of-band and carry the public key to the EKMF workstation.
+
+#### Wrap the signing keys at the EKMF workstation
+1. Generate an AES-256 transport KEK and wrap it under the retrieved RSA public key using `CKM_RSA_PKCS_OAEP` (SHA-256), producing the transport key XML (SimpleExchange format).
+1. Wrap each signing key under the transport KEK using `CKM_AES_CBC_PAD`, producing the payload XML (SimpleExchange format).
+
+#### Iteration 2 - import the wrapped keys
+1. Submit the wrapped key material to the frontend plugin (base64-encoded XML documents):
+
+    `POST https://<frontend-plugin>:4000/api/ekmf/import/payload`
+
+    `{"transport_key": "<base64 xml>", "payload": "<base64 xml>"}`
+
+    Note: only `EDDSA_ED25519` and `SECP256K1` keys can be imported; the backend rejects payloads containing other key types (e.g. AES).
+1. Run another empty signing iteration. The backend unwraps the keys through the EKMF addon and imports them into the HSM as non-extractable EP11 key blobs, persisted on the backend data volume.
+1. Retrieve the import result:
+
+    `GET https://<frontend-plugin>:4000/api/ekmf/import/result`
+
+    The response lists the imported key labels with their hashes and checksums. Verify the checksums against the values reported by the EKMF workstation.
+1. Take a backup of volume `fb-vault-data.qcow2`. For disaster recovery planning purposes, this volume is critical and would need to be restored in order to resume signing operations. It contains the imported key blobs and the EKMF wrapping key bundle.
+
+Note: The frontend keeps the EKMF import state in memory. If the frontend plugin restarts during the import sequence, restart the import from the `/api/ekmf/import/init` step (the keys themselves are unaffected).
 
 ### Create a validation key
 The [fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/14228779100572-Getting-started-with-Fireblocks-Key-Link#h_01HZ4MK8CMM24JFKVR4Q0AQHGB) on key creation
@@ -166,10 +191,10 @@ The [fireblocks documentation](https://support.fireblocks.io/hc/en-us/articles/1
   - Add the path of the file containing said secret private key for your agent user (`fireblocks_secret.key`)
   - Add the API key of your agent user
   - Add the path of the file containing the private validation key in pem format (`validationkey.pem`)
-- For each of said two signing keys created during the empty signing iteration:
-  - Add the key id of the signing key
-  - Add the path of the file containing the public signing key
-  - Run `python signing_key.py` once for each of the keys created by the OSO backend during the previous empty signing iteration.
+- For each of said two signing keys imported through the EKMF addon:
+  - Add the key id of the signing key (the EKMF key label)
+  - Add the path of the file containing the public signing key (the PEM exported from the EKMF workstation)
+  - Run `python signing_key.py` once for each of the keys imported during the EKMF import sequence.
 - Run a signing iteration with OSO. (Fireblocks will create two `KEY_LINK_PROOF_OF_OWNERSHIP_REQUEST` messages to be signed by the backend. After these message are signed and received by Fireblocks, the keys can be linked to a Vault account.)
 
 ### Link the signing key to a vault

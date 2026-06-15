@@ -37,9 +37,9 @@ variable "HPCR_CERT" {
 }
 
 variable "VOLUME_NAME" {
-  type = string
+  type        = string
   description = "Volume name"
-  default = "vault_vol"
+  default     = "vault_vol"
 }
 
 variable "WORKLOAD_VOL_SEED" {
@@ -54,15 +54,20 @@ variable "WORKLOAD_VOLUME_PREV_SEED" {
 }
 
 variable "INTERNAL_GREP11" {
-  type = bool
-  default = true
+  type        = bool
+  default     = true
   description = "Deploy GREP11 in the backend"
 }
 
-variable "MIN_KEYS" {
-  type = number
-  default = 1
-  description = "Number of key generated per key type"
+variable "BACKEND_EKMF_ADDON_IMAGE" {
+  type        = string
+  description = "EKMF addon image containing registry"
+}
+
+variable "EKMF_ADDON_PORT" {
+  type        = number
+  default     = 8081
+  description = "Port the EKMF addon listens on (must not collide with the plugin app on 8080)"
 }
 
 ### INTERNAL GREP11 ###
@@ -70,15 +75,15 @@ variable "MIN_KEYS" {
 variable "GREP11_IMAGE" {
   type        = string
   description = "GREP11 image name with registry"
-  nullable = true
-  default = null
+  nullable    = true
+  default     = null
 }
 
 variable "DOMAIN" {
   type        = string
   description = "Crypto appliance domain"
-  nullable = true
-  default = null
+  nullable    = true
+  default     = null
 }
 
 variable "C16_CLIENT_HOST" {
@@ -104,56 +109,23 @@ variable "C16_CLIENT_LOGLEVEL" {
 variable "C16_CLIENT_KEY" {
   type        = string
   description = "Crypto appliance client key"
-  default = ""
+  default     = ""
 }
 
 variable "C16_CLIENT_CERT" {
   type        = string
   description = "Crypto appliance client certificate"
-  default = ""
+  default     = ""
 }
 
 variable "C16_CA_CERT" {
   type        = string
   description = "Crypto appliance CA certificate"
-  default = ""
-}
-
-variable "CERT_VALIDITY_PERIOD" {
-  type    = string
-  default = "720"
-}
-
-### EXTERNAL GREP11 ###
-
-variable "GREP11_ENDPOINT" {
-  type = string
-  description = "Standalone GREP11 endpoint"
-  default = null
-  nullable = true
-}
-
-variable "GREP11_CA" {
-  type = string
-  description = "GREP11 CA certificate (PEM)"
-  default = ""
-}
-
-variable "GREP11_CLIENT_KEY" {
-  type = string
-  description = "GREP11 client key PKCS8 (PEM)"
-  default = ""
-}
-
-variable "GREP11_CLIENT_CERT" {
-  type = string
-  description = "GREP11 client certificate (PEM)"
-  default = ""
+  default     = ""
 }
 
 variable "CRYPTO_PASSTHROUGH_ENABLEMENT" {
-  type = bool
-  default = false
+  type        = bool
+  default     = false
   description = "Crypto passthrough enablement configuration"
 }
-

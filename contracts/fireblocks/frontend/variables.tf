@@ -37,6 +37,27 @@ variable "FIREBLOCKS_AGENT_IMAGE" {
   description = "Fireblocks agent image name"
 }
 
+variable "FRONTEND_EKMF_ADDON_IMAGE" {
+  type        = string
+  description = "EKMF addon image containing registry"
+}
+
+variable "EKMF_ADDON_PORT" {
+  type        = number
+  default     = 8081
+  description = "Port the EKMF addon listens on (must not collide with the plugin app on 8080)"
+}
+
+variable "APPROVER_FINGERPRINTS" {
+  type        = string
+  description = "Space-separated OpenSSH SHA256 fingerprints of the approver certificates allowed to call the EKMF import endpoints"
+}
+
+variable "APPROVER_CA_CERT" {
+  type        = string
+  description = "CA certificate (PEM) that signed the approver client certificates"
+}
+
 # Fireblocks
 variable "MOBILE_GATEWAY_URL" {
   type        = string

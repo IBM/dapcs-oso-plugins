@@ -1,5 +1,5 @@
 #
-# (c) Copyright IBM Corp. 2024, 2025
+# (c) Copyright IBM Corp. 2024, 2026
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,65 +15,37 @@
 #
 """"""
 
-import random
-import string
-import importlib
-import sys
-import pytest
-import json
-import flask
 import base64
-import datetime
-import pkcs11
+import hashlib
+import importlib
+import json
+import sys
 
-from asn1crypto import core as asn1_core
+import flask
+import pytest
 
-from uuid import uuid4
-
-from cryptography import x509
-from cryptography.x509.oid import NameOID
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa, ec, ed25519
-
-from oso.framework.data.types import V1_3
 from oso.framework.plugin import create_app
-from oso.framework.plugin.addons.signing_server._key import SECP256K1_Key, ED25519_Key
-from oso.framework.plugin.addons.signing_server.generated import server_pb2
 
+from fb.ekmf import CKM
+from fb.ekmf.generated import server_pb2
 
-@pytest.fixture(scope="session")
-def document_set():
-    """DocumentList for testing in the above format.
+# Matches the signature in tests/data/signed_doc.json
+MOCK_SIGNATURE = bytes.fromhex(
+    "9702268725126e1831a50ba8b47bbe168866ffdc6b2ff91048f92baff5c80065"
+    "e410c206246470793a24c743f816b7bd260b9d509d4f7a67db6deb6341b501d6"
+)
 
-    Returns:
-        object:
+# The signingDeviceKeyId in tests/data/unsigned_doc.json
+SIGNING_DEVICE_KEY_ID = "46c3933b-7d9a-41a4-9d69-696527902c5e"
 
-            Contains OSO and ISV formatted data of the same set.
+EKMF_ADDON_PORT = "8081"
 
-    """
-    oso: list[V1_3.Document] = list()
-    isv: list[str] = list()
-    for doc in [
-        V1_3.Document(
-            id=str(uuid4()),
-            content="".join(
-                random.choices(
-                    population=string.ascii_letters + string.digits,
-                    k=random.randint(1, 99),
-                ),
-            ),
-            metadata="",
-        )
-        for _ in range(random.randint(1, 99))
-    ]:
-        print(doc)
-        oso.append(doc)
-        isv.append(f"{doc.id}:{doc.content}")
-
-    return {
-        "isv": isv,
-        "oso": V1_3.DocumentList(documents=oso, count=len(oso)),
-    }
+# OpenSSH-format fingerprint allowed to call the EKMF import endpoints; the
+# fake mtls parser below decodes SHA256: headers the same way the real one
+# fingerprints certificates.
+APPROVER_FINGERPRINT = (
+    "SHA256:" + base64.b64encode(hashlib.sha256(b"test-approver").digest()).decode()
+)
 
 
 @pytest.fixture(scope="function")
@@ -112,7 +84,7 @@ def LoggingFactory(_cleanup, ConfigManager):
 def _setup_app(ConfigManager, LoggingFactory, monkeypatch, grpc_stub_mock):
     def _fn():
         monkeypatch.setattr(
-            "oso.framework.plugin.addons.signing_server.generated.server_pb2_grpc.CryptoStub",
+            "fb.ekmf.generated.server_pb2_grpc.CryptoStub",
             grpc_stub_mock,
         )
 
@@ -155,11 +127,21 @@ def _enable_mtls(monkeypatch, _setup_app):
         )
 
         def _parse(x):
+            fp_header = x.headers.get("X-TEST-SSL-FINGERPRINT", "NOT_VALID")
+
+            # The real parser returns the SHA256 digest bytes of the
+            # certificate's public key.
+            fingerprint = (
+                base64.b64decode(fp_header.removeprefix("SHA256:"))
+                if fp_header.startswith("SHA256:")
+                else fp_header
+            )
+
             return dict(
                 authorized=bool(x.headers.get("X-TEST-SSL-VERIFY", "False")),
                 errors=[],
-                fingerprint=x.headers.get("X-TEST-SSL-FINGERPRINT", "NOT_VALID"),
-                _user=x.headers.get("X-TEST-SSL-FINGERPRINT", "NOT_VALID"),
+                fingerprint=fingerprint,
+                _user=fingerprint,
             )
 
         monkeypatch.setattr(
@@ -172,162 +154,55 @@ def _enable_mtls(monkeypatch, _setup_app):
 
 
 @pytest.fixture
-def set_grep11_certs(monkeypatch):
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-    )
-
-    subject = issuer = x509.Name(
-        [
-            x509.NameAttribute(NameOID.COMMON_NAME, "localhost"),
-        ]
-    )
-
-    cert = (
-        x509.CertificateBuilder()
-        .subject_name(subject)
-        .issuer_name(issuer)
-        .public_key(private_key.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(datetime.datetime.now())
-        .not_valid_after(datetime.datetime.now() + datetime.timedelta(days=3650))
-        .add_extension(
-            x509.SubjectAlternativeName([x509.DNSName("localhost")]),
-            critical=False,
-        )
-        .sign(private_key, hashes.SHA256())
-    )
-
-    cert_pem = cert.public_bytes(encoding=serialization.Encoding.PEM)
-
-    key_pem = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
-
-    monkeypatch.setenv(
-        "PLUGIN__ADDONS__0__CA_CERT",
-        base64.b64encode(cert_pem).decode(),
-    )
-    monkeypatch.setenv(
-        "PLUGIN__ADDONS__0__CLIENT_KEY",
-        base64.b64encode(key_pem).decode(),
-    )
-    monkeypatch.setenv(
-        "PLUGIN__ADDONS__0__CLIENT_CERT",
-        base64.b64encode(cert_pem).decode(),
-    )
-
-
-@pytest.fixture
-def secp256k1_key_pair():
-    private_key = ec.generate_private_key(ec.SECP256K1())
-    public_key = private_key.public_key()
-
-    private_bytes = private_key.private_bytes(
-        encoding=serialization.Encoding.DER,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
-
-    ec_point_bytes = public_key.public_bytes(
-        encoding=serialization.Encoding.X962,
-        format=serialization.PublicFormat.UncompressedPoint,
-    )
-
-    public_pem = public_key.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
-
-    return {
-        "private_key": private_key,
-        "public_key": public_key,
-        "private_bytes": private_bytes,
-        "ec_point_bytes": ec_point_bytes,
-        "public_bytes": public_pem,
-    }
-
-
-@pytest.fixture
-def ed25519_key_pair():
-    private_key = ed25519.Ed25519PrivateKey.generate()
-    public_key = private_key.public_key()
-
-    private_bytes = private_key.private_bytes(
-        encoding=serialization.Encoding.DER,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
-
-    ec_point_bytes = public_key.public_bytes(
-        encoding=serialization.Encoding.Raw,
-        format=serialization.PublicFormat.Raw,
-    )
-
-    public_pem = public_key.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
-
-    return {
-        "private_key": private_key,
-        "public_key": public_key,
-        "private_bytes": private_bytes,
-        "ec_point_bytes": ec_point_bytes,  # actually just raw Ed25519 key bytes
-        "public_bytes": public_pem,
-    }
-
-
-@pytest.fixture
-def grpc_stub_mock(secp256k1_key_pair, ed25519_key_pair):
-    # Create a class to mock the stub
+def grpc_stub_mock():
     class MockCryptoStub:
+        sign_calls: list[server_pb2.SignSingleRequest] = []
+
         def __init__(self, _=None):
             pass
 
-        def GenerateKeyPair(self, request: server_pb2.GenerateKeyPairRequest):
-            priv_key = server_pb2.KeyBlob()
+        def SignSingle(self, request: server_pb2.SignSingleRequest):
+            MockCryptoStub.sign_calls.append(request)
 
-            ec_point_bytes = None
-
-            match request.PubKeyTemplate[pkcs11.Attribute.EC_PARAMS].AttributeB.hex():
-                case SECP256K1_Key.Oid:
-                    ec_point_bytes = secp256k1_key_pair["ec_point_bytes"]
-                case ED25519_Key.Oid:
-                    ec_point_bytes = ed25519_key_pair["ec_point_bytes"]
-                case _:
-                    raise Exception("Unsupported Key OID")
-
-            octet_string = asn1_core.OctetString(ec_point_bytes)
-
-            der_encoded_ec_point = octet_string.dump()
-
-            ec_point_attribute_value = server_pb2.AttributeValue(
-                AttributeB=der_encoded_ec_point
-            )
-
-            pub_key = server_pb2.KeyBlob(
-                Attributes={pkcs11.Attribute.EC_POINT: ec_point_attribute_value}
-            )
-
-            response = server_pb2.GenerateKeyPairResponse(
-                PrivKey=priv_key, PubKey=pub_key
-            )
-
-            return response
+            return server_pb2.SignSingleResponse(Signature=MOCK_SIGNATURE)
 
         def GetMechanismList(self, _):
             return server_pb2.GetMechanismListResponse(
                 Mechs=[
-                    pkcs11.Mechanism.ECDSA,
-                    pkcs11.Mechanism._VENDOR_DEFINED + 0x1001C,
+                    CKM.ECDSA,
+                    CKM.IBM_ED25519_SHA512,
                 ]
             )
 
+    MockCryptoStub.sign_calls.clear()
+
     return MockCryptoStub
+
+
+@pytest.fixture
+def keystore_path(tmp_path):
+    return tmp_path / "ekmf"
+
+
+@pytest.fixture
+def seeded_keystore(keystore_path):
+    """Write imported key blobs for the key ids referenced by the test data."""
+    keystore_path.mkdir(parents=True, exist_ok=True)
+
+    keys = {
+        SIGNING_DEVICE_KEY_ID: {
+            "key_type": "secp256k1",
+            "encrypted_key": base64.b64encode(b"fake-secp256k1-blob").decode(),
+        },
+        "test-ed25519-0": {
+            "key_type": "ed25519",
+            "encrypted_key": base64.b64encode(b"fake-ed25519-blob").decode(),
+        },
+    }
+
+    (keystore_path / "signing_keys.json").write_text(json.dumps(keys))
+
+    return keys
 
 
 @pytest.fixture()
@@ -336,8 +211,7 @@ def app(
     monkeypatch,
     _setup_app,
     _enable_mtls,
-    tmp_path,
-    set_grep11_certs,
+    keystore_path,
     grpc_stub_mock,
 ):
     monkeypatch.setenv("PLUGIN__MODE", mode)
@@ -346,28 +220,24 @@ def app(
         "fb.plugin:FBPlugin",
     )
     monkeypatch.setenv(
-        "PLUGIN__ADDONS__0__TYPE",
-        "oso.framework.plugin.addons.signing_server",
+        "FB__EKMF_ADDON_PORT",
+        EKMF_ADDON_PORT,
     )
     monkeypatch.setenv(
-        "PLUGIN__ADDONS__0__GREP11_ENDPOINT",
+        "FB__GREP11_ENDPOINT",
         "localhost",
     )
     monkeypatch.setenv(
-        "PLUGIN__ADDONS__0__GREP11_PORT",
+        "FB__GREP11_PORT",
         "9876",
     )
     monkeypatch.setenv(
-        "PLUGIN__ADDONS__0__KEYSTORE_PATH",
-        str(tmp_path),
+        "FB__KEYSTORE_PATH",
+        str(keystore_path),
     )
     monkeypatch.setenv(
-        "PLUGIN__ADDONS__0__EXTRA",
-        "test",
-    )
-    monkeypatch.setenv(
-        "FB__min_keys",
-        "2",
+        "FB__EKMF_APPROVER_FINGERPRINTS",
+        APPROVER_FINGERPRINT,
     )
 
     _enable_mtls()

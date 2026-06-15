@@ -21,6 +21,8 @@ dependencies = [
     "pydantic",
     "pydantic-settings",
     "gunicorn>=23.0.0",
+    "grpcio==1.73.1",         # DO NOT UPGRADE — kernel panic
+    "protobuf==6.31.1",       # DO NOT UPGRADE — kernel panic
 ]
 
 [project.optional-dependencies]
@@ -43,6 +45,9 @@ name = "cz_conventional_commits"
 version_provider = "scm"
 update_changelog_on_bump = true
 
+[tool.ruff]
+extend-exclude = ["src/fb/ekmf/generated"]
+
 [tool.ruff.lint]
 select = ["E", "F"]
 fixable = ["ALL"]
@@ -51,4 +56,6 @@ fixable = ["ALL"]
 convention = "numpy"
 
 [tool.uv.sources]
-ibm-oso-framework = { git = "ssh://git@github.com/IBM/dapcs-oso-framework.git", branch = "master" }
+# TODO: revert to the master branch once the CERTS__CLIENT_CA_EXTRA framework
+# change is merged.
+ibm-oso-framework = { git = "ssh://git@github.com/IBM/dapcs-oso-framework.git", branch = "ekmf" }

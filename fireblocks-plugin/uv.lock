@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.11"
 
 [[package]]
@@ -486,8 +486,10 @@ source = { editable = "." }
 dependencies = [
     { name = "cryptography" },
     { name = "flask" },
+    { name = "grpcio" },
     { name = "gunicorn" },
     { name = "jsonschema" },
+    { name = "protobuf" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "requests" },
@@ -515,11 +517,13 @@ requires-dist = [
     { name = "commitizen", marker = "extra == 'dev'" },
     { name = "cryptography", specifier = "==45.0.5" },
     { name = "flask" },
+    { name = "grpcio", specifier = "==1.73.1" },
     { name = "gunicorn", specifier = ">=23.0.0" },
-    { name = "ibm-oso-framework", marker = "extra == 'dev'", git = "ssh://git@github.com/IBM/dapcs-oso-framework.git?branch=master" },
+    { name = "ibm-oso-framework", marker = "extra == 'dev'", git = "ssh://git@github.com/IBM/dapcs-oso-framework.git?branch=ekmf" },
     { name = "jsonschema" },
     { name = "pip-tools", marker = "extra == 'dev'" },
     { name = "pre-commit", marker = "extra == 'dev'" },
+    { name = "protobuf", specifier = "==6.31.1" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pytest", marker = "extra == 'test'" },
@@ -536,7 +540,7 @@ provides-extras = ["dev", "test"]
 [[package]]
 name = "ibm-oso-framework"
 version = "0.0.0"
-source = { git = "ssh://git@github.com/IBM/dapcs-oso-framework.git?branch=master#ef8c44ebeec366251d1479378161c1c5bbc9e1ed" }
+source = { git = "ssh://git@github.com/IBM/dapcs-oso-framework.git?branch=ekmf#9c6990ff82619b17e5ddb1bff52047064f7796dd" }
 dependencies = [
     { name = "asn1crypto" },
     { name = "cffi" },

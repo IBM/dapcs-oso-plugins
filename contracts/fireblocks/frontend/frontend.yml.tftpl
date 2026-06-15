@@ -23,6 +23,10 @@ spec:
           value: "fb.plugin:FBPlugin"
         - name: plugin__mode
           value: "frontend"
+        - name: FB__EKMF_ADDON_PORT
+          value: "${tpl.ekmf_addon_port}"
+        - name: FB__EKMF_APPROVER_FINGERPRINTS
+          value: "${tpl.approver_fingerprints}"
     - name: frontend_plugin_proxy
       image: ${tpl.plugin_image}
       command:
@@ -34,6 +38,8 @@ spec:
       env:
         - name: app__name
           value: "frontend_plugin_proxy"
+        - name: certs__client_ca_extra
+          value: "${tpl.approver_ca}"
       ports:
         - containerPort: 4000
           hostPort: 4000
@@ -48,3 +54,13 @@ spec:
           value: "${tpl.mobile_gateway_url}"
         - name: REFRESH_TOKEN
           value: "${tpl.refresh_token}"
+    - name: ekmf-addon
+      image: ${tpl.ekmf_addon_image}
+      ports:
+        - containerPort: ${tpl.ekmf_addon_port}
+          protocol: TCP
+      env:
+        - name: EKMF_ADDON_MODE
+          value: "frontend"
+        - name: EKMF_ADDON_PORT
+          value: "${tpl.ekmf_addon_port}"

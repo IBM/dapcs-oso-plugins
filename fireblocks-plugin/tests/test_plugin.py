@@ -19,14 +19,11 @@ from typing import TypeVar
 import uuid
 import pydantic
 import pytest
-import requests_mock
 
-from fb.plugin import FBPlugin, get_signing_api_endpoint
+from fb.ekmf import CKM
 from fb.types import MessagesRequest, MessagesStatusRequest, MessagesStatusResponse
 
 from oso.framework.data.types import V1_3
-from oso.framework.plugin import current_oso_plugin_app
-from oso.framework.plugin.addons.signing_server._key import KeyType
 
 
 T = TypeVar("T", bound=pydantic.BaseModel)
@@ -150,52 +147,48 @@ def test_frontend_oso2isv(mode, client):
 
 
 @pytest.mark.parametrize("mode", ["backend"])
-def test_min_keys(mode, client):
-    fb_plugin = current_oso_plugin_app()
-    assert isinstance(fb_plugin, FBPlugin)
+def test_backend(
+    mode,
+    seeded_keystore,
+    client,
+    grpc_stub_mock,
+):
+    response = client.post(
+        f"/api/{mode}/v1alpha1/documents",
+        data=V1_3.DocumentList(documents=[unsigned_doc], count=1).model_dump_json(),
+        content_type="application/json",
+        headers={
+            "X-TEST-SSL-VERIFY": "True",
+            "X-TEST-SSL-FINGERPRINT": "VALID",
+        },
+    )
 
-    secp256k1_keys = fb_plugin.signing_server.list_keys(key_type=KeyType.SECP256K1)
-    assert len(secp256k1_keys) == 2
+    assert response.status_code == 200
+    assert response.data == b'["OK"]\n'
 
-    ed25519_keys = fb_plugin.signing_server.list_keys(key_type=KeyType.ED25519)
-    assert len(ed25519_keys) == 2
+    # The imported secp256k1 EP11 blob signs the raw (pre-hashed) message
+    # with CKM_ECDSA.
+    assert len(grpc_stub_mock.sign_calls) == 1
+    sign_request = grpc_stub_mock.sign_calls[0]
 
+    message = json.loads(json.loads(unsigned_doc.content)["message"]["payload"])
 
-# @pytest.mark.parametrize("mode", ["backend"])
-# def test_backend(
-#     mode,
-#     client,
-# ):
-#     fb_plugin = current_oso_plugin_app()
-#     assert isinstance(fb_plugin, FBPlugin)
+    assert sign_request.Data == bytes.fromhex(message["messagesToSign"][0]["message"])
+    assert sign_request.Mech.Mechanism == CKM.ECDSA
+    assert sign_request.PrivKey.KeyBlobs == [b"fake-secp256k1-blob"]
 
-#     # keys = fb_plugin.signing_server.list_keys(key_type=KeyType.SECP256K1)
+    response = client.get(
+        f"/api/{mode}/v1alpha1/documents",
+        headers={
+            "X-TEST-SSL-VERIFY": "True",
+            "X-TEST-SSL-FINGERPRINT": "VALID",
+        },
+    )
 
-#     response = client.post(
-#         f"/api/{mode}/v1alpha1/documents",
-#         data=V1_3.DocumentList(documents=[unsigned_doc], count=1).model_dump_json(),
-#         content_type="application/json",
-#         headers={
-#             "X-TEST-SSL-VERIFY": "True",
-#             "X-TEST-SSL-FINGERPRINT": "VALID",
-#         },
-#     )
-
-#     assert response.status_code == 200
-#     assert response.data == b'["OK"]\n'
-
-#     response = client.get(
-#         f"/api/{mode}/v1alpha1/documents",
-#         headers={
-#             "X-TEST-SSL-VERIFY": "True",
-#             "X-TEST-SSL-FINGERPRINT": "VALID",
-#         },
-#     )
-
-#     assert response.status_code == 200
-#     assert V1_3.DocumentList.model_validate_json(response.data) == V1_3.DocumentList(
-#         documents=[signed_doc], count=1
-#     )
+    assert response.status_code == 200
+    assert V1_3.DocumentList.model_validate_json(response.data) == V1_3.DocumentList(
+        documents=[signed_doc], count=1
+    )
 
 
 @pytest.mark.parametrize("mode", ["frontend"])
@@ -216,16 +209,13 @@ def test_frontend_status(mode, client):
 
 @pytest.mark.parametrize("mode", ["backend"])
 def test_backend_status(mode, client):
-    with requests_mock.Mocker() as mock:
-        mock.get(f"{get_signing_api_endpoint()}/status", text="OK")
-
-        response = client.get(
-            f"/api/{mode}/v1alpha1/status",
-            headers={
-                "X-TEST-SSL-VERIFY": "True",
-                "X-TEST-SSL-FINGERPRINT": "VALID",
-            },
-        )
+    response = client.get(
+        f"/api/{mode}/v1alpha1/status",
+        headers={
+            "X-TEST-SSL-VERIFY": "True",
+            "X-TEST-SSL-FINGERPRINT": "VALID",
+        },
+    )
 
     assert response.status_code == 200
     assert V1_3.ComponentStatus.model_validate_json(

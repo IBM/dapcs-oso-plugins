@@ -1,6 +1,12 @@
 # Container Configuration
 FRONTEND_PLUGIN_IMAGE="registry.control12.dap.local/oso/dapcs-fireblocks-oso-plugins@sha256:"
 FIREBLOCKS_AGENT_IMAGE="registry.control12.dap.local/oso/fireblocks-agent@sha256:"
+FRONTEND_EKMF_ADDON_IMAGE="registry.control12.dap.local/oso/ekmf-addon@sha256:"
 
 # Fireblocks
 REFRESH_TOKEN=""
+
+# EKMF import operator access
+APPROVER_FINGERPRINTS="SHA256:... SHA256:..."
+APPROVER_CA_CERT=<<-EOT
+EOT

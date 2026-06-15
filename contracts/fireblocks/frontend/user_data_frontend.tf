@@ -18,21 +18,25 @@ resource "local_file" "frontend_podman_play" {
   content = templatefile(
     "${path.module}/frontend.yml.tftpl",
     { tpl = {
-      plugin_image = var.FRONTEND_PLUGIN_IMAGE,
-      fbagent_image = var.FIREBLOCKS_AGENT_IMAGE,
-      mobile_gateway_url = var.MOBILE_GATEWAY_URL,
-      refresh_token = var.REFRESH_TOKEN,
+      plugin_image          = var.FRONTEND_PLUGIN_IMAGE,
+      fbagent_image         = var.FIREBLOCKS_AGENT_IMAGE,
+      ekmf_addon_image      = var.FRONTEND_EKMF_ADDON_IMAGE,
+      ekmf_addon_port       = var.EKMF_ADDON_PORT,
+      approver_fingerprints = var.APPROVER_FINGERPRINTS,
+      approver_ca           = base64encode(var.APPROVER_CA_CERT),
+      mobile_gateway_url    = var.MOBILE_GATEWAY_URL,
+      refresh_token         = var.REFRESH_TOKEN,
     } },
   )
-  filename = "frontend/podman-play.yml"
+  filename        = "frontend/podman-play.yml"
   file_permission = "0664"
 }
 
 # archive of the folder containing podman play file. This folder could create additional resources such as files
 # to be mounted into containers, environment files etc. This is why all of these files get bundled in a tgz file (base64 encoded)
 resource "hpcr_tgz" "frontend_workload" {
-  depends_on = [ local_file.frontend_podman_play ]
-  folder = "${path.module}/frontend"
+  depends_on = [local_file.frontend_podman_play]
+  folder     = "${path.module}/frontend"
 }
 
 locals {
@@ -48,19 +52,19 @@ locals {
 # encryption it built into the provider and matches the latest HPCR image. If required it can be overridden.
 # We use a temporary, random keypair to execute the signature. This could also be overriden.
 resource "hpcr_text_encrypted" "frontend_contract" {
-  text      = yamlencode(local.frontend_workload)
-  cert      = var.HPCR_CERT == "" ? null : var.HPCR_CERT
+  text = yamlencode(local.frontend_workload)
+  cert = var.HPCR_CERT == "" ? null : var.HPCR_CERT
 }
 
 resource "local_file" "frontend_contract" {
-  count    = var.DEBUG ? 1 : 0
-  content  = yamlencode(local.frontend_workload)
-  filename = "frontend_contract.yml"
+  count           = var.DEBUG ? 1 : 0
+  content         = yamlencode(local.frontend_workload)
+  filename        = "frontend_contract.yml"
   file_permission = "0664"
 }
 
 resource "local_file" "frontend_contract_encrypted" {
-  content  = hpcr_text_encrypted.frontend_contract.rendered
-  filename = "frontend.yml"
+  content         = hpcr_text_encrypted.frontend_contract.rendered
+  filename        = "frontend.yml"
   file_permission = "0664"
 }
