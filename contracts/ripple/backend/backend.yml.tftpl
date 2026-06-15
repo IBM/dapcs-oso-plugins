@@ -1,0 +1,137 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: backend-pod
+
+spec:
+  restartPolicy: Always
+
+  containers:
+    - name: cold-bridge
+      image: ${tpl.cold_bridge_image}
+      env:
+        # This must be same as VAULT_ID below
+        - name: Vault__Ids__0
+          value: "${tpl.vault_id}"
+        # Passphrase: "{{EMPTY}}" is needed so that the bridge data is not cyphered and can be managed by OSO
+        - name: Passphrase
+          value: "${tpl.passphrase}"
+      volumeMounts:
+        - name: app-data
+          mountPath: /App_Data
+
+    - name: kmsconnect
+      image: ${tpl.kmsconnect_image}
+      volumeMounts:
+        - name: ibm-cfg
+          mountPath: /opt/kms/cfg/ibm.cfg
+        - name: cert
+          mountPath: /data/cert
+          readOnly: true
+
+    - name: cold-vault
+      image: ${tpl.cold_vault_image}
+      env:
+        - name: PLATFORM
+          value: "kms"
+        - name: VAULT_BRIDGE_LOGLEVEL
+          value: "7"
+        - name: VAULT_CORE_LOGLEVEL
+          value: "7"
+        - name: VAULT_KMS_ENDPOINT
+          value: "localhost:10000"
+        - name: VAULT_TRUSTED_SIG
+          value: "pem:${tpl.notary_messaging_public_key}"
+        - name: VAULT_ID
+          value: "${tpl.vault_id}"
+        # This comes from the docker container that is spun up above. If it's normal vault, then it would be API end point.
+        - name: HARMONIZE_CORE_ENDPOINT
+          value: "http://localhost:8080/internal/v1"
+
+    - name: backend-plugin
+      image: ${tpl.backend_plugin_image}
+      envFrom:
+        - configMapRef:
+            name: contract.config.map
+            optional: false
+      env:
+        - name: COMPONENT
+          value: "backend_plugin"
+        - name: SEED
+          value: "${tpl.seed}"
+        - name: PORT
+          value: "4000"
+        - name: COLD_BRIDGE_ENDPOINT
+          value: "${tpl.cold_bridge_endpoint}"
+      ports:
+        - containerPort: 4000
+          hostPort: 4000
+
+
+%{ if tpl.enable_ep11server }
+    - name: ep11server
+      image: ${tpl.grep11_image}
+      securityContext:
+        runAsUser: 0
+        privileged: true
+      ports:
+        - containerPort: 9876
+          hostPort: 9876
+      env:
+        - name: PORT
+          value: "9876"
+      volumeMounts:
+%{ if !tpl.crypto_pass_enable }
+        - name: cfg
+          mountPath: /etc/c16
+%{ endif ~}
+        - name: srv1
+          mountPath: /cfg
+        - name: grep11server-yaml
+          mountPath: /etc/ep11server/ep11server.yaml
+        - name: z90crypt
+          mountPath: /dev/z90crypt
+%{~ endif ~}
+
+  volumes:
+
+    - name: app-data
+      hostPath:
+        path: /mnt/data
+        type: Directory
+
+    - name: ibm-cfg
+      hostPath:
+        path: ./ibm.cfg
+        type: File
+
+    - name: cert
+      hostPath:
+        path: ./cert
+        type: Directory
+
+%{~ if tpl.enable_ep11server ~}
+%{ if !tpl.crypto_pass_enable }
+    - name: cfg
+      hostPath:
+        path: ./cfg
+        type: Directory
+%{ endif }
+
+    - name: srv1
+      hostPath:
+        path: ./srv1
+        type: Directory
+
+    - name: grep11server-yaml
+      hostPath:
+        path: ./srv1/grep11server.yaml
+        type: File
+
+    - name: z90crypt
+      hostPath:
+        path: /dev/z90crypt
+        type: CharDevice
+
+%{~ endif ~}
