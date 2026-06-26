@@ -62,6 +62,11 @@ class FrontendPluginManager:
 
         self.seed = os.environ.get("SEED", "")
 
+        # Persistent volume configuration
+        self.workload_vol_seed = os.environ.get("WORKLOAD_VOL_SEED", "")
+        self.workload_volume_prev_seed = os.environ.get("WORKLOAD_VOLUME_PREV_SEED", "")
+        self.volume_name = os.environ.get("VOLUME_NAME", "frontend_vol")
+
         self.root_cert_b64 = os.environ.get("ROOTCERT")
         with tempfile.NamedTemporaryFile(delete=False) as root_cert_file:
             self.verify = self._write_root_cert(root_cert_file)

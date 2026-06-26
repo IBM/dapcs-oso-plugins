@@ -48,3 +48,20 @@ variable "REFRESH_TOKEN" {
   type        = string
   description = "Fireblocks refresh token (in base64)"
 }
+
+variable "VOLUME_NAME" {
+  type = string
+  description = "Volume name"
+  default = "frontend_vol"
+}
+
+variable "WORKLOAD_VOL_SEED" {
+  type        = string
+  description = "Workload volume encryption seed"
+}
+
+variable "WORKLOAD_VOLUME_PREV_SEED" {
+  type        = string
+  description = "Previous Workload Seed phrase for conductor disk volume."
+  default     = ""
+}

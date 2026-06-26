@@ -16,6 +16,18 @@
 locals {
   workload_template = {
     "type" : "workload",
-    "images": {}
+    "images": {},
+    "volumes": {
+        (var.VOLUME_NAME): merge(
+         {
+            "filesystem": "ext4",
+            "mount": "/mnt/data",
+            "seed": var.WORKLOAD_VOL_SEED,
+        },
+       length(var.WORKLOAD_VOLUME_PREV_SEED) > 0 ?
+       { previousSeed = var.WORKLOAD_VOLUME_PREV_SEED } :
+       {}
+       )
+    }
   }
 }
