@@ -11,9 +11,11 @@ spec:
     - name: cold-bridge
       image: ${tpl.cold_bridge_image}
       env:
-        # This must be same as VAULT_ID below
-        - name: Vault__Ids__0
-          value: "${tpl.vault_id}"
+        # Dynamic vault IDs - supports 1 to N vaults
+%{ for i, vault in tpl.vaults ~}
+        - name: Vault__Ids__${i}
+          value: "${vault.vault_id}"
+%{ endfor ~}
         # Passphrase: "{{EMPTY}}" is needed so that the bridge data is not cyphered and can be managed by OSO
         - name: Passphrase
           value: "${tpl.passphrase}"
@@ -24,30 +26,47 @@ spec:
     - name: kmsconnect
       image: ${tpl.kmsconnect_image}
       volumeMounts:
-        - name: ibm-cfg
+        - name: ibm-cfg-kms
           mountPath: /opt/kms/cfg/ibm.cfg
+        - name: ibm-cfg-app
+          mountPath: /app/cfg/ibm.cfg
         - name: cert
           mountPath: /data/cert
           readOnly: true
 
-    - name: cold-vault
+    # KMS vault containers - one per vault
+    # KMS_URL sets the port each vault listens on so all can coexist in the shared pod network namespace
+%{ for i, vault in tpl.vaults ~}
+    - name: vault-${i}
       image: ${tpl.cold_vault_image}
       env:
         - name: PLATFORM
           value: "kms"
+        - name: KMS_URL
+          value: "0.0.0.0:${10001 + i}"
         - name: VAULT_BRIDGE_LOGLEVEL
-          value: "7"
+          value: "6"
         - name: VAULT_CORE_LOGLEVEL
-          value: "7"
+          value: "3"
         - name: VAULT_KMS_ENDPOINT
           value: "localhost:10000"
         - name: VAULT_TRUSTED_SIG
           value: "pem:${tpl.notary_messaging_public_key}"
         - name: VAULT_ID
-          value: "${tpl.vault_id}"
-        # This comes from the docker container that is spun up above. If it's normal vault, then it would be API end point.
+          value: "${vault.vault_id}"
         - name: HARMONIZE_CORE_ENDPOINT
           value: "http://localhost:8080/internal/v1"
+        - name: HMZ_FEATURE_OPTIONAL_MAXIMUM_FEE
+          value: "true"
+%{ if vault.log_level != "" ~}
+        - name: HMZ_LOG_LEVEL
+          value: "${vault.log_level}"
+%{ endif ~}
+%{ if vault.vault_log_level != "" ~}
+        - name: VAULT_LOG_LEVEL
+          value: "${vault.vault_log_level}"
+%{ endif ~}
+%{ endfor ~}
 
     - name: backend-plugin
       image: ${tpl.backend_plugin_image}
@@ -58,7 +77,7 @@ spec:
       env:
         - name: COMPONENT
           value: "backend_plugin"
-        - name: SEED
+        - name: OSOENCRYPTIONPASS
           value: "${tpl.seed}"
         - name: PORT
           value: "4000"
@@ -67,7 +86,6 @@ spec:
       ports:
         - containerPort: 4000
           hostPort: 4000
-
 
 %{ if tpl.enable_ep11server }
     - name: ep11server
@@ -101,7 +119,12 @@ spec:
         path: /mnt/data
         type: Directory
 
-    - name: ibm-cfg
+    - name: ibm-cfg-kms
+      hostPath:
+        path: ./ibm.cfg
+        type: File
+
+    - name: ibm-cfg-app
       hostPath:
         path: ./ibm.cfg
         type: File

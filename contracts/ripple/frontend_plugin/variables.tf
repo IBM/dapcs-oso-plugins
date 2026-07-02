@@ -31,21 +31,9 @@ variable "FRONTEND_PLUGIN_IMAGE" {
   description = "Frontend plugin image name"
 }
 
-variable "SEED" {
-  type        = string
-  description = "Encrypt data through the iteration pipeline (should be same value as backend plugin)"
-  default     = ""
-}
-
-# Ripple
-variable "SK" {
-  type = string
-  description = "Private (secret) key of a registered user used to login to Ripple"
-}
-
-variable "VAULT_ID" {
-  type = string
-  description = "Ripple vault id"
+variable "VAULT_IDS" {
+  type        = list(string)
+  description = "List of Ripple vault IDs (supports 1 to N vaults)"
 }
 
 variable "HMZ_AUTH_HOSTNAME" {
@@ -68,4 +56,26 @@ variable "TOKEN_EXP" {
   type = string
   description = "Ripple configured bearer token expiration (#h#m#s format)"
   default = "4h0m0s"
+}
+
+variable "OSOENCRYPTIONPASS" {
+  type      = string
+  description = "Encrypt data through the iteration pipeline (should be same value as backend plugin)"
+  default   = ""
+  sensitive = true
+}
+
+variable "HMZ_USER_SK" {
+  type = string
+  description = "Private (secret) key of a registered user used to login to Ripple"
+}
+
+variable "HMZ_AUTH_PATH" {
+  type = string
+  description = "Harmonize path to get auth token"
+}
+
+variable "HMZ_AUTH_CUSTOMERID" {
+  type = string
+  description = "Harmonize customer id used to authenticate"
 }

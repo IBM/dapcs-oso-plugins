@@ -23,7 +23,7 @@ variable "DEBUG" {
   default     = false
 }
 
-variable "SEED" {
+variable "OSOENCRYPTIONPASS" {
   type        = string
   description = "Encrypt data through the iteration pipeline (should be the same value as frontend plugin)"
   default     = ""
@@ -56,15 +56,27 @@ variable "KMSCONNECT_IMAGE" {
 }
 
 variable "VAULT_ID" {
-  type = string
-  description = "Vault ID"
+  type        = string
+  description = "Vault ID (single vault, use VAULTS for multi-vault)"
+  default     = ""
+}
+
+variable "VAULTS" {
+  type = list(object({
+    vault_id         = string
+    log_level        = optional(string, "")
+    vault_log_level  = optional(string, "")
+  }))
+  description = "List of KMS vault configurations (supports 1 to N vaults). Use instead of VAULT_ID for multi-vault setups."
+  default     = []
 }
 
 variable "PASSPHRASE" {
-  type = string
-  default = "{{EMPTY}}"
-  description = "Required to enable plugin to view content within a JSON format"
+  type        = string
+  description = "Passphrase for cold-bridge. Use '{{EMPTY}}' so that the bridge data is not cyphered and can be managed by OSO"
+  default     = "{{EMPTY}}"
 }
+
 
 variable "NOTARY_MESSAGING_PUBLIC_KEY" {
   type = string

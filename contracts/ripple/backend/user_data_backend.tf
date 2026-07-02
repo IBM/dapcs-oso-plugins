@@ -38,6 +38,20 @@ resource "local_file" "grep_client_cert" {
 }
 
 
+# Local variable to handle both single vault (VAULT_ID) and multi-vault (VAULTS) configurations
+# Normalizes all vault configurations to KMS-only platform with required runtime settings
+locals {
+  # If VAULT_ID is provided, create a single-vault list with default KMS values
+  # Otherwise, use the VAULTS list (which is already KMS-only)
+  resolved_vaults = var.VAULT_ID != "" ? [
+    {
+      vault_id        = var.VAULT_ID
+      log_level       = ""
+      vault_log_level = ""
+    }
+  ] : var.VAULTS
+}
+
 resource "local_file" "podman-play" {
   content = templatefile(
     "${path.module}/backend.yml.tftpl",
@@ -46,11 +60,11 @@ resource "local_file" "podman-play" {
       cold_bridge_image = var.COLD_BRIDGE_IMAGE,
       cold_vault_image = var.COLD_VAULT_IMAGE,
       kmsconnect_image = var.KMSCONNECT_IMAGE,
-      vault_id = var.VAULT_ID,
+      vaults = local.resolved_vaults,
       passphrase = var.PASSPHRASE,
       notary_messaging_public_key = var.NOTARY_MESSAGING_PUBLIC_KEY,
-      seed = var.SEED,
       cold_bridge_endpoint = var.COLD_BRIDGE_ENDPOINT,
+      seed = var.OSOENCRYPTIONPASS,
       enable_ep11server = var.INTERNAL_GREP11,
       crypto_pass_enable = var.CRYPTO_PASSTHROUGH_ENABLEMENT,
       grep11_image = var.GREP11_IMAGE,
@@ -81,7 +95,7 @@ resource "null_resource" "crypto_deps" {
   ]
 }
 
-# archive of the folder containing docker-compose file. This folder could create additional resources such as files
+# archive of the folder containing podman play file. This folder could create additional resources such as files
 # to be mounted into containers, environment files etc. This is why all of these files get bundled in a tgz file (base64 encoded)
 resource "hpcr_tgz" "workload" {
   depends_on = [local_file.podman-play]
