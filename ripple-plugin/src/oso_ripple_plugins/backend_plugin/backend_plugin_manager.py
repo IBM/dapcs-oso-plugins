@@ -14,7 +14,6 @@
 # limitations under the License.
 
 
-import copy
 import json
 import logging
 import os
@@ -129,20 +128,25 @@ class BackendPluginManager:
                 "transactions": v_tx[vaultid],
                 "manifests": v_ma[vaultid],
             }
+            vault_file_name = None
             try:
                 with tempfile.NamedTemporaryFile(mode="w", delete=False) as vault_file:
+                    vault_file_name = vault_file.name
                     json.dump(content, vault_file)
 
-            files = {"files": (vault_id, open(vault_file.name, "rb"))}
-            response = requests.post(
-                url=f"{self.cold_bridge_endpoint}/v1/feed/upload",
-                files=files,
-            )
-            response.raise_for_status()
-            self.logger.info(f"Successfully uploaded vault {vaultid}")
+                files = {"files": (vaultid, open(vault_file.name, "rb"))}
+                response = requests.post(
+                    url=f"{self.cold_bridge_endpoint}/v1/feed/upload",
+                    files=files,
+                )
+                response.raise_for_status()
+                self.logger.info(f"Successfully uploaded vault {vaultid}")
             except requests.HTTPError as http_err:
-                self.logger.error(f"HTTP error uploading vault {vaultid}: {http_err} - {response.text}")
+                self.logger.error(f"HTTP error uploading vault {vaultid}: {http_err}")
             except Exception as err:
                 self.logger.error(f"Unexpected error uploading vault {vaultid}: {err}")
+            finally:
+                if vault_file_name:
+                    os.remove(vault_file_name)
 
         self.logger.info("Bulk upload finished successfully")

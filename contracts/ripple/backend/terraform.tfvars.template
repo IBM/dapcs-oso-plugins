@@ -26,6 +26,13 @@ WORKLOAD_VOLUME_PREV_SEED=""
 # Default value points to the cold-bridge service running on localhost
 # COLD_BRIDGE_ENDPOINT="http://localhost:8080"
 
+# Multi-Vault Configuration (use VAULTS instead of VAULT_ID for multiple vaults)
+# Each vault container will be assigned KMS_URL="0.0.0.0:10001", "0.0.0.0:10002", etc.
+# VAULTS = [
+#   { vault_id = "", log_level = "", vault_log_level = "" },
+#   { vault_id = "", log_level = "", vault_log_level = "" },
+# ]
+
 # Update volume name if it is different from default value vault_vol
 # VOLUME_NAME = ""
 

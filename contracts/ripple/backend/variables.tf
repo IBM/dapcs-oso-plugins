@@ -15,7 +15,6 @@
 
 variable "PREFIX" {
   type        = string
-  default     = ""
 }
 
 variable "DEBUG" {
@@ -56,15 +55,20 @@ variable "KMSCONNECT_IMAGE" {
   description = "KMS connect image containing registry"
 }
 
+variable "VAULT_ID" {
+  type        = string
+  description = "Vault ID (single vault, use VAULTS for multi-vault)"
+  default     = ""
+}
+
 variable "VAULTS" {
   type = list(object({
     vault_id         = string
-    phrase           = string
-    platform         = string
     log_level        = optional(string, "")
     vault_log_level  = optional(string, "")
   }))
-  description = "List of vault configurations (supports 1 to N vaults). Platform can be 'kms' or 'mock'"
+  description = "List of KMS vault configurations (supports 1 to N vaults). Use instead of VAULT_ID for multi-vault setups."
+  default     = []
 }
 
 variable "PASSPHRASE" {
@@ -72,6 +76,7 @@ variable "PASSPHRASE" {
   description = "Passphrase for cold-bridge. Use '{{EMPTY}}' so that the bridge data is not cyphered and can be managed by OSO"
   default     = "{{EMPTY}}"
 }
+
 
 variable "NOTARY_MESSAGING_PUBLIC_KEY" {
   type = string
