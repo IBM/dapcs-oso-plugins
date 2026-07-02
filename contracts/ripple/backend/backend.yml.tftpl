@@ -18,45 +18,40 @@ spec:
 %{ endfor ~}
         # Passphrase: "{{EMPTY}}" is needed so that the bridge data is not cyphered and can be managed by OSO
         - name: Passphrase
-          value: "{{EMPTY}}"
+          value: "${tpl.passphrase}"
       volumeMounts:
         - name: app-data
           mountPath: /App_Data
 
     - name: kmsconnect
       image: ${tpl.kmsconnect_image}
-      env:
-        - name: VAULT_BRIDGE_LOGLEVEL
-          value: "6"
-        - name: VAULT_CORE_LOGLEVEL
-          value: "3"
       volumeMounts:
-        - name: ibm-cfg
+        - name: ibm-cfg-kms
           mountPath: /opt/kms/cfg/ibm.cfg
-        - name: ibm-cfg
+        - name: ibm-cfg-app
           mountPath: /app/cfg/ibm.cfg
         - name: cert
           mountPath: /data/cert
           readOnly: true
 
+    # KMS vault containers - one per vault
+    # KMS_URL sets the port each vault listens on so all can coexist in the shared pod network namespace
 %{ for i, vault in tpl.vaults ~}
     - name: vault-${i}
       image: ${tpl.cold_vault_image}
       env:
         - name: PLATFORM
-          value: "${vault.platform}"
+          value: "kms"
+        - name: KMS_URL
+          value: "0.0.0.0:${10001 + i}"
         - name: VAULT_BRIDGE_LOGLEVEL
           value: "6"
         - name: VAULT_CORE_LOGLEVEL
           value: "3"
         - name: VAULT_KMS_ENDPOINT
           value: "localhost:10000"
-%{ if vault.platform == "mock" ~}
-        - name: MOCK_PHRASE
-          value: "${vault.phrase}"
-%{ endif ~}
         - name: VAULT_TRUSTED_SIG
-          value: "${tpl.notary_messaging_public_key}"
+          value: "pem:${tpl.notary_messaging_public_key}"
         - name: VAULT_ID
           value: "${vault.vault_id}"
         - name: HARMONIZE_CORE_ENDPOINT
@@ -70,15 +65,6 @@ spec:
 %{ if vault.vault_log_level != "" ~}
         - name: VAULT_LOG_LEVEL
           value: "${vault.vault_log_level}"
-%{ endif ~}
-%{ if vault.platform == "mock" ~}
-      volumeMounts:
-        - name: mock-cfg-vault
-          mountPath: /opt/vault-core/cfg/vault.cfg
-          subPath: vault.cfg
-        - name: mock-cfg-mock
-          mountPath: /opt/vault-core/cfg/mock.cfg
-          subPath: mock.cfg
 %{ endif ~}
 %{ endfor ~}
 
@@ -133,7 +119,12 @@ spec:
         path: /mnt/data
         type: Directory
 
-    - name: ibm-cfg
+    - name: ibm-cfg-kms
+      hostPath:
+        path: ./ibm.cfg
+        type: File
+
+    - name: ibm-cfg-app
       hostPath:
         path: ./ibm.cfg
         type: File
@@ -142,20 +133,6 @@ spec:
       hostPath:
         path: ./cert
         type: Directory
-
-    - name: mock-cfg-vault
-      configMap:
-        name: mock-vault-config
-        items:
-          - key: vault.cfg
-            path: vault.cfg
-
-    - name: mock-cfg-mock
-      configMap:
-        name: mock-vault-config
-        items:
-          - key: mock.cfg
-            path: mock.cfg
 
 %{~ if tpl.enable_ep11server ~}
 %{ if !tpl.crypto_pass_enable }
