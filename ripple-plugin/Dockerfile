@@ -17,12 +17,16 @@
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS live
 
 ENV HOME=/app-root
-RUN microdnf --assumeyes module enable nginx:1.24 \
+RUN --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum.repos.d/centos.repo,target=/etc/yum.repos.d/centos.repo \
+    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial,target=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial \
+    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum/vars/stream,target=/etc/yum/vars/stream \
+    microdnf --assumeyes module enable nginx:1.24 \
     && microdnf --assumeyes \
         --setopt=install_weak_deps=0 \
         --disablerepo='*' \
         --enablerepo=ubi-9-baseos-rpms \
         --enablerepo=ubi-9-appstream-rpms \
+        --enablerepo=ubi-9-codeready-builder-rpms \
         install \
             python3.13 \
             gettext nginx findutils \
@@ -44,16 +48,20 @@ RUN install --directory --mode 0700 --owner 1001 --group 0 \
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS compile
 
 ENV HOME=/app-root
-RUN microdnf --assumeyes \
+RUN --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum.repos.d/centos.repo,target=/etc/yum.repos.d/centos.repo \
+    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial,target=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial \
+    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum/vars/stream,target=/etc/yum/vars/stream \
+    microdnf --assumeyes \
         --setopt=install_weak_deps=0 \
         --setopt=keepcache=0 \
         --disablerepo='*' \
         --enablerepo=ubi-9-baseos-rpms \
         --enablerepo=ubi-9-appstream-rpms \
+        --enablerepo=ubi-9-codeready-builder-rpms \
         install \
             openssl-devel \
             gcc cargo rustc \
-            python3.13 python3.13-devel \
+            python3.13 python3.13-pip python3.13-devel \
     && mkdir -p "${HOME}"
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
@@ -84,11 +92,15 @@ CMD [ "/oso-root/common/entrypoints/entrypoint.sh" ]
 FROM compile AS test
 
 ENV PATH="/opt/venv/bin:$PATH"
-RUN microdnf --assumeyes \
+RUN --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum.repos.d/centos.repo,target=/etc/yum.repos.d/centos.repo \
+    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial,target=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial \
+    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum/vars/stream,target=/etc/yum/vars/stream \
+    microdnf --assumeyes \
         --setopt=install_weak_deps=0 \
         --disablerepo='*' \
         --enablerepo=ubi-9-baseos-rpms \
         --enablerepo=ubi-9-appstream-rpms \
+        --enablerepo=ubi-9-codeready-builder-rpms \
         install \
             gcc \
             make \
