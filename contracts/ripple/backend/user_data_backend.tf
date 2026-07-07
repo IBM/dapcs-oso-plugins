@@ -43,13 +43,23 @@ resource "local_file" "grep_client_cert" {
 locals {
   # If VAULT_ID is provided, create a single-vault list with default KMS values
   # Otherwise, use the VAULTS list (which is already KMS-only)
-  resolved_vaults = var.VAULT_ID != "" ? [
+  resolved_vaults_raw = var.VAULT_ID != "" ? [
     {
       vault_id        = var.VAULT_ID
       log_level       = ""
       vault_log_level = ""
     }
   ] : var.VAULTS
+
+  # Inject grpc_port per vault (10001, 10002, 10003, ...) so the template
+  # can reference vault.grpc_port without inline arithmetic.
+  # KMS_URL is set to "0.0.0.0:<grpc_port>" on each vault container so that
+  # each vault instance binds its gRPC listener on a unique port within the
+  # shared pod network namespace. cold-bridge is told the matching endpoint
+  # via Vault__GrpcEndpoints__N. See: DAPCS-1965.
+  resolved_vaults = [
+    for i, v in local.resolved_vaults_raw : merge(v, { grpc_port = 10001 + i })
+  ]
 }
 
 resource "local_file" "podman-play" {
@@ -95,8 +105,8 @@ resource "null_resource" "crypto_deps" {
   ]
 }
 
-# archive of the folder containing podman play file. This folder could create additional resources such as files
-# to be mounted into containers, environment files etc. This is why all of these files get bundled in a tgz file (base64 encoded)
+# archive of the folder containing the podman-play pod YAML and supporting files (ibm.cfg, certs, etc.)
+# All of these files get bundled into a tgz (base64 encoded) for the HPCR workload contract.
 resource "hpcr_tgz" "workload" {
   depends_on = [local_file.podman-play]
   folder = "podman-play"
@@ -230,3 +240,4 @@ ep11crypto:
   domain: "${var.DOMAIN}"
 EOT
 }
+
