@@ -20,13 +20,15 @@ ENV HOME=/app-root
 RUN --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum.repos.d/centos.repo,target=/etc/yum.repos.d/centos.repo \
     --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial,target=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial \
     --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum/vars/stream,target=/etc/yum/vars/stream \
-    microdnf --assumeyes module enable nginx:1.24 \
+    rpm --install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
+    && microdnf --assumeyes module enable nginx:1.24 \
     && microdnf --assumeyes \
         --setopt=install_weak_deps=0 \
         --disablerepo='*' \
         --enablerepo=ubi-9-baseos-rpms \
         --enablerepo=ubi-9-appstream-rpms \
         --enablerepo=ubi-9-codeready-builder-rpms \
+        --enablerepo=epel \
         install \
             python3.13 \
             gettext nginx findutils \
@@ -51,13 +53,15 @@ ENV HOME=/app-root
 RUN --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum.repos.d/centos.repo,target=/etc/yum.repos.d/centos.repo \
     --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial,target=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial \
     --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum/vars/stream,target=/etc/yum/vars/stream \
-    microdnf --assumeyes \
+    rpm --install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
+    && microdnf --assumeyes \
         --setopt=install_weak_deps=0 \
         --setopt=keepcache=0 \
         --disablerepo='*' \
         --enablerepo=ubi-9-baseos-rpms \
         --enablerepo=ubi-9-appstream-rpms \
         --enablerepo=ubi-9-codeready-builder-rpms \
+        --enablerepo=epel \
         install \
             openssl-devel \
             gcc cargo rustc \
@@ -101,6 +105,7 @@ RUN --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum.repos.d
         --enablerepo=ubi-9-baseos-rpms \
         --enablerepo=ubi-9-appstream-rpms \
         --enablerepo=ubi-9-codeready-builder-rpms \
+        --enablerepo=epel \
         install \
             gcc \
             make \
