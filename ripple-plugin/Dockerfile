@@ -24,7 +24,7 @@ RUN microdnf --assumeyes module enable nginx:1.24 \
         --enablerepo=ubi-9-baseos-rpms \
         --enablerepo=ubi-9-appstream-rpms \
         install \
-            python3.12 \
+            python3.13 \
             gettext nginx findutils \
     && microdnf clean all
 
@@ -53,9 +53,9 @@ RUN microdnf --assumeyes \
         install \
             openssl-devel \
             gcc cargo rustc \
-            python3.12-pip python3.12-devel \
+            python3.13-pip python3.13-devel \
     && mkdir -p "${HOME}"
-ARG PIP_INDEX_URL=https://pypi.org/simple 
+ARG PIP_INDEX_URL=https://pypi.org/simple
 
 COPY /requirements*.txt /tmp
 RUN --mount=type=secret,id=netrc,target=${HOME}/.netrc,mode=0600 \
@@ -92,7 +92,7 @@ RUN microdnf --assumeyes \
         install \
             gcc \
             make \
-            python3.12-devel \
+            python3.13-devel \
             openssl-devel \
     && microdnf clean all
 COPY --from=compile /opt/venv /opt/venv
