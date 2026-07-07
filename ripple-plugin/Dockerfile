@@ -53,22 +53,22 @@ RUN microdnf --assumeyes \
         install \
             openssl-devel \
             gcc cargo rustc \
-            python3.13-pip python3.13-devel \
+            python3.13 python3.13-devel \
     && mkdir -p "${HOME}"
 ARG PIP_INDEX_URL=https://pypi.org/simple
 
 COPY /requirements*.txt /tmp
 RUN --mount=type=secret,id=netrc,target=${HOME}/.netrc,mode=0600 \
-    pip3.12 install --upgrade --require-hashes \
+    pip3.13 install --upgrade --require-hashes \
         --requirement <(gawk 'BEGIN { RS = "[^\\\\]\n" } /pip==/ { print }' /tmp/requirements.constraints.txt) \
-    && pip3.12 install --requirement /tmp/requirements.build.txt \
-    && python3.12 -m venv --without-pip /opt/venv \
-    && pip3.12 --python /opt/venv install --requirement /tmp/requirements.txt
+    && pip3.13 install --requirement /tmp/requirements.build.txt \
+    && python3.13 -m venv --without-pip /opt/venv \
+    && pip3.13 --python /opt/venv install --requirement /tmp/requirements.txt
 
 COPY /src/oso_ripple_plugins /src/oso_ripple_plugins
 COPY /src/setup.py /src
-RUN pip3.12 wheel --wheel-dir /build --no-index --no-build-isolation /src \
-    && pip3.12 --python /opt/venv install --no-index --find-links /build oso_ripple_plugins
+RUN pip3.13 wheel --wheel-dir /build --no-index --no-build-isolation /src \
+    && pip3.13 --python /opt/venv install --no-index --find-links /build oso_ripple_plugins
 
 FROM live AS release
 
@@ -97,5 +97,5 @@ RUN microdnf --assumeyes \
     && microdnf clean all
 COPY --from=compile /opt/venv /opt/venv
 COPY --chown=1001:0 /unit-tests /pyproject.toml /tests/
-RUN pip3.12 --python /opt/venv install --requirement /tmp/requirements.constraints.txt
+RUN pip3.13 --python /opt/venv install --requirement /tmp/requirements.constraints.txt
 CMD ["pytest", "-svvv"]
