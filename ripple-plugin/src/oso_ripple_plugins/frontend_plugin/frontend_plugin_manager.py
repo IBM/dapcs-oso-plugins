@@ -233,10 +233,15 @@ class FrontendPluginManager:
         return documents
 
     def bulk_upload(self, documents):
+        BATCH_SIZE = 20
+
         vaults = []
         transactions = []
         accounts = []
         manifests = []
+        doc_count = 0
+        batch_num = 1
+        failed_batches = []  # track batches that failed to send
 
         self.logger.info("Saving documents for bulk upload")
         for document in documents:
@@ -254,13 +259,60 @@ class FrontendPluginManager:
                 manifests.extend(contents.get("manifests", []))
                 vaults.extend(contents.get("vaults", []))
 
+                doc_count += 1
+
                 self.logger.info(
                     f"Successfully saved document {document_id} for bulk upload"
                 )
+
             except Exception as e:
+                # Only parsing/decryption failures land here
+                # a bad document is skipped, batch state is untouched.
                 self.logger.exception(e)
                 continue
 
+            # Flush every BATCH_SIZE documents
+            if doc_count >= BATCH_SIZE:
+                self.logger.info(f"Flushing batch {batch_num} ({doc_count} documents)")
+                self._flush_batch(
+                    batch_num, transactions, accounts, manifests, vaults, failed_batches
+                )
+                vaults, transactions, accounts, manifests, doc_count = [], [], [], [], 0
+                batch_num += 1
+
+
+        # Send any remaining documents
+        if doc_count > 0:
+            self.logger.info(f"Flushing final batch {batch_num} ({doc_count} documents)")
+            self._flush_batch(
+                batch_num, transactions, accounts, manifests, vaults, failed_batches
+            )
+
+        if failed_batches:
+            self.logger.error(
+                f"Bulk upload finished with {len(failed_batches)} failed batch(es): "
+                f"{failed_batches}"
+            )
+        else:
+            self.logger.info("Bulk upload finished successfully")
+
+    def _flush_batch(self, batch_num, transactions, accounts, manifests, vaults, failed_batches):
+        """Send one batch; on failure, log it, record it, and let the run continue."""
+        try:
+            self._send_batch(transactions, accounts, manifests, vaults)
+        except Exception as e:
+            self.logger.exception(f"Batch {batch_num} failed to upload: {e}")
+            failed_batches.append(
+                {
+                    "batch_num": batch_num,
+                    "accounts": accounts,
+                    "transactions": transactions,
+                    "manifests": manifests,
+                    "vaults": vaults,
+                }
+            )
+
+    def _send_batch(self, transactions, accounts, manifests, vaults):
         content = {
             "accounts": accounts,
             "transactions": transactions,
@@ -268,25 +320,32 @@ class FrontendPluginManager:
             "vaults": vaults,
         }
 
-        self.logger.info("Performing bulk upload to frontend")
+        self.logger.info(
+            f"Performing bulk upload to frontend "
+            f"(accounts={len(accounts)}, transactions={len(transactions)}, "
+            f"manifests={len(manifests)}, vaults={len(vaults)})"
+        )
+
         token = self.get_token()
+        vault_file_path = None
         try:
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as vault_file:
                 json.dump(content, vault_file)
+                vault_file_path = vault_file.name
 
-            files = {"files": open(vault_file.name, "rb")}
-            response = requests.post(
-                url=f"https://{self.hmz_api_hostname}/v1/vaults/operations/signed",
-                headers={"Authorization": "Bearer " + token},
-                files=files,
-                verify=self.verify,
-            )
+            with open(vault_file_path, "rb") as f:
+                response = requests.post(
+                    url=f"https://{self.hmz_api_hostname}/v1/vaults/operations/signed",
+                    headers={"Authorization": "Bearer " + token},
+                    files={"files": f},
+                    verify=self.verify,
+                )
             response.raise_for_status()
         except Exception as e:
             raise e
         finally:
-            os.remove(vault_file.name)
-        self.logger.info("Bulk upload finished successfully")
+            if vault_file_path:
+                os.remove(vault_file_path)
 
     def backend_status(self):
         pass
