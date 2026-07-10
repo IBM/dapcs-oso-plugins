@@ -24,7 +24,8 @@ resource "local_file" "frontend_plugin_podman_play" {
       HMZ_API_HOSTNAME  = var.HMZ_API_HOSTNAME,
       ROOTCERT          = var.ROOTCERT,
       SEED              = var.SEED,
-      TOKEN_EXP         = var.TOKEN_EXP
+      TOKEN_EXP         = var.TOKEN_EXP,
+      BATCH_UPLOAD_SIZE = var.BATCH_UPLOAD_SIZE
     } },
   )
   filename        = "frontend_plugin/play.yml"

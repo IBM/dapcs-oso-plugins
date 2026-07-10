@@ -6,3 +6,6 @@ HMZ_AUTH_HOSTNAME=""
 HMZ_API_HOSTNAME=""
 VAULT_ID=""
 SK=""
+
+# Frontend Plugin Configuration
+BATCH_UPLOAD_SIZE=20

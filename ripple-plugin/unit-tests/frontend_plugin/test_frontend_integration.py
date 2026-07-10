@@ -591,3 +591,61 @@ def test_docs_upload_continues_after_batch_failure(client):
             req for req in m.request_history if req.url == signed_url
         ]
         assert len(signed_calls) == 2
+
+
+def test_docs_upload_respects_custom_batch_size(client, monkeypatch):
+    """With BATCH_UPLOAD_SIZE=5, 12 documents should split into 5 + 5 + 2."""
+    monkeypatch.setenv("BATCH_UPLOAD_SIZE", "5")
+
+    documents = [
+        {
+            "id": f"test_account_id_{i}",
+            "content": json.dumps(
+                {
+                    "vaultId": "test_vault_id",
+                    "accounts": [{"accountId": f"test_account_id_{i}"}],
+                    "transactions": [],
+                    "manifests": [],
+                }
+            ),
+            "metadata": "",
+        }
+        for i in range(12)
+    ]
+    payload = {"documents": documents, "count": 12}
+
+    token_url = "https://hmz_auth_hostname/token"
+    signed_url = "https://hmz_api_hostname/v1/vaults/operations/signed"
+
+    with requests_mock.mock() as m:
+        m.post(token_url, json={"access_token": "test_token"}, status_code=200)
+        m.post(
+            signed_url,
+            json={"accounts": [], "transactions": [], "manifests": [], "vaults": []},
+            status_code=200,
+        )
+
+        response = client.post(
+            "api/frontend/v1alpha1/documents",
+            headers={
+                "X-SSL-CERT": component_cert,
+                "X-SSL-CLIENT-VERIFY": "SUCCESS",
+            },
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 204
+
+        signed_calls = [req for req in m.request_history if req.url == signed_url]
+        assert len(signed_calls) == 3  # 5 + 5 + 2
+
+        batch_sizes = []
+        for call in signed_calls:
+            parts = decoder.MultipartDecoder(
+                call.body, call.headers["Content-Type"], "utf-8"
+            ).parts
+            accounts = json.loads(parts[0].text)["accounts"]
+            batch_sizes.append(len(accounts))
+
+        assert batch_sizes == [5, 5, 2]

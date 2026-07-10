@@ -69,3 +69,14 @@ variable "TOKEN_EXP" {
   description = "Ripple configured bearer token expiration (#h#m#s format)"
   default = "4h0m0s"
 }
+
+variable "BATCH_UPLOAD_SIZE" {
+  type        = number
+  description = "Number of documents per batch during bulk upload"
+  default     = 20
+
+  validation {
+    condition     = var.BATCH_UPLOAD_SIZE > 0
+    error_message = "BATCH_UPLOAD_SIZE must be a positive integer."
+  }
+}

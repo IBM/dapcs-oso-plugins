@@ -20,7 +20,7 @@ import uuid
 import pytest
 import requests_mock
 
-from oso_ripple_plugins.common import utils
+from oso_ripple_plugins.common import utils, errors
 from oso_ripple_plugins.frontend_plugin.frontend_plugin_manager import (
     FrontendPluginManager,
 )
@@ -90,3 +90,18 @@ def test_parse_wait_time(set_env, monkeypatch):
     for time_check in times:
         monkeypatch.setenv("TOKEN_EXP", time_check[0])
         assert time_check[1] == utils.parse_wait_time(os.environ.get("TOKEN_EXP"))
+
+
+def test_invalid_batch_upload_size_raises_config_error(monkeypatch):
+    """A non-integer BATCH_UPLOAD_SIZE should raise ConfigError, not a bare ValueError."""
+    monkeypatch.setenv("BATCH_UPLOAD_SIZE", "not-a-number")
+    # adjust required env vars below to match your test setup / conftest fixtures
+    with pytest.raises(errors.ConfigError, match="BATCH_UPLOAD_SIZE must be a valid integer"):
+        FrontendPluginManager()
+
+
+def test_zero_batch_upload_size_raises_config_error(monkeypatch):
+    """A zero or negative BATCH_UPLOAD_SIZE should raise ConfigError."""
+    monkeypatch.setenv("BATCH_UPLOAD_SIZE", "0")
+    with pytest.raises(errors.ConfigError, match="BATCH_UPLOAD_SIZE must be a positive integer"):
+        FrontendPluginManager()

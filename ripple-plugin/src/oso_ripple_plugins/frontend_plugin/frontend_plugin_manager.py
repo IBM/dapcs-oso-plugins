@@ -74,6 +74,14 @@ class FrontendPluginManager:
         if self.token_exp_in_secs == 0:
             raise errors.ConfigError("TOKEN_EXP format is invalid")
 
+        try:
+            self.batch_size = int(os.environ.get("BATCH_UPLOAD_SIZE", 20))
+        except ValueError:
+            raise errors.ConfigError("BATCH_UPLOAD_SIZE must be a valid integer")
+
+        if self.batch_size <= 0:
+            raise errors.ConfigError("BATCH_UPLOAD_SIZE must be a positive integer")
+
         logging.basicConfig(stream=sys.stdout, level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
@@ -233,8 +241,6 @@ class FrontendPluginManager:
         return documents
 
     def bulk_upload(self, documents):
-        BATCH_SIZE = 20
-
         vaults = []
         transactions = []
         accounts = []
@@ -271,8 +277,8 @@ class FrontendPluginManager:
                 self.logger.exception(e)
                 continue
 
-            # Flush every BATCH_SIZE documents
-            if doc_count >= BATCH_SIZE:
+            # Flush every batch_size documents
+            if doc_count >= self.batch_size:
                 self.logger.info(f"Flushing batch {batch_num} ({doc_count} documents)")
                 self._flush_batch(
                     batch_num, transactions, accounts, manifests, vaults, failed_batches
