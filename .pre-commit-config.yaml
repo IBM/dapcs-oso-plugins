@@ -10,7 +10,7 @@ default_stages:
   - pre-push
 
 default_language_version:
-  python: python3.12
+  python: python3.13
 
 repos:
   - repo: https://github.com/ibm/detect-secrets
