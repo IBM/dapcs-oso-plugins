@@ -462,3 +462,132 @@ def test_encrypted_upload(seed, client):
             "manifests": [{"manifestId": "test_manifest_id"}],
             "vaults": [],
         }
+
+
+def test_docs_upload_multiple_batches(client):
+    """25 documents should be split into two upload requests: 20 + 5."""
+    documents = [
+        {
+            "id": f"test_account_id_{i}",
+            "content": json.dumps(
+                {
+                    "vaultId": "test_vault_id",
+                    "accounts": [{"accountId": f"test_account_id_{i}"}],
+                    "transactions": [],
+                    "manifests": [],
+                }
+            ),
+            "metadata": "",
+        }
+        for i in range(25)
+    ]
+    payload = {"documents": documents, "count": 25}
+
+    token_url = "https://hmz_auth_hostname/token"
+    signed_url = "https://hmz_api_hostname/v1/vaults/operations/signed"
+
+    with requests_mock.mock() as m:
+        m.post(token_url, json={"access_token": "test_token"}, status_code=200)
+        m.post(
+            signed_url,
+            json={"accounts": [], "transactions": [], "manifests": [], "vaults": []},
+            status_code=200,
+        )
+
+        response = client.post(
+            "api/frontend/v1alpha1/documents",
+            headers={
+                "X-SSL-CERT": component_cert,
+                "X-SSL-CLIENT-VERIFY": "SUCCESS",
+            },
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 204
+
+        # Two batches (20 + 5) => two calls to the signed upload endpoint
+        signed_calls = [
+            req for req in m.request_history if req.url == signed_url
+        ]
+        assert len(signed_calls) == 2
+
+        first_batch = decoder.MultipartDecoder(
+            signed_calls[0].body, signed_calls[0].headers["Content-Type"], "utf-8"
+        ).parts
+        second_batch = decoder.MultipartDecoder(
+            signed_calls[1].body, signed_calls[1].headers["Content-Type"], "utf-8"
+        ).parts
+
+        first_accounts = json.loads(first_batch[0].text)["accounts"]
+        second_accounts = json.loads(second_batch[0].text)["accounts"]
+
+        assert len(first_accounts) == 20
+        assert len(second_accounts) == 5
+        # No overlap / no drops across the batch boundary
+        all_ids = {a["accountId"] for a in first_accounts} | {
+            a["accountId"] for a in second_accounts
+        }
+        assert all_ids == {f"test_account_id_{i}" for i in range(25)}
+
+
+def test_docs_upload_continues_after_batch_failure(client):
+    """If one batch's upload fails, later batches should still be sent
+    (i.e. the whole run should not abort on a single batch failure)."""
+    documents = [
+        {
+            "id": f"test_account_id_{i}",
+            "content": json.dumps(
+                {
+                    "vaultId": "test_vault_id",
+                    "accounts": [{"accountId": f"test_account_id_{i}"}],
+                    "transactions": [],
+                    "manifests": [],
+                }
+            ),
+            "metadata": "",
+        }
+        for i in range(25)  # 2 batches: 20 + 5
+    ]
+    payload = {"documents": documents, "count": 25}
+
+    token_url = "https://hmz_auth_hostname/token"
+    signed_url = "https://hmz_api_hostname/v1/vaults/operations/signed"
+
+    with requests_mock.mock() as m:
+        m.post(token_url, json={"access_token": "test_token"}, status_code=200)
+        # First batch fails (500), second batch succeeds
+        m.post(
+            signed_url,
+            [
+                {"status_code": 500},
+                {
+                    "json": {
+                        "accounts": [],
+                        "transactions": [],
+                        "manifests": [],
+                        "vaults": [],
+                    },
+                    "status_code": 200,
+                },
+            ],
+        )
+
+        response = client.post(
+            "api/frontend/v1alpha1/documents",
+            headers={
+                "X-SSL-CERT": component_cert,
+                "X-SSL-CLIENT-VERIFY": "SUCCESS",
+            },
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        # The run should complete (not raise/abort) despite the first
+        # batch failing — both batches should have been attempted.
+        assert response.status_code == 204
+
+        signed_calls = [
+            req for req in m.request_history if req.url == signed_url
+        ]
+        assert len(signed_calls) == 2
