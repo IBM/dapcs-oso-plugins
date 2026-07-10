@@ -94,3 +94,9 @@ def app(set_env, tmpdir, mocker):
 def client(app):
     """A test client for the app."""
     return app.test_client()
+
+
+@pytest.fixture(scope="function")
+def batch_upload_size(request, monkeypatch):
+    monkeypatch.setenv("BATCH_UPLOAD_SIZE", str(request.param))
+    yield request.param

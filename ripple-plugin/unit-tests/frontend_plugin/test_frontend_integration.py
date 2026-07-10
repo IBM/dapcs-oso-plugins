@@ -593,10 +593,9 @@ def test_docs_upload_continues_after_batch_failure(client):
         assert len(signed_calls) == 2
 
 
-def test_docs_upload_respects_custom_batch_size(client, monkeypatch):
+@pytest.mark.parametrize("batch_upload_size", [5], indirect=True)
+def test_docs_upload_respects_custom_batch_size(batch_upload_size, client):
     """With BATCH_UPLOAD_SIZE=5, 12 documents should split into 5 + 5 + 2."""
-    monkeypatch.setenv("BATCH_UPLOAD_SIZE", "5")
-
     documents = [
         {
             "id": f"test_account_id_{i}",
