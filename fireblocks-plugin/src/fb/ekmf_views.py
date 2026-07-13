@@ -302,4 +302,13 @@ class EkmfImportResultApi(MethodView):
                 "EKMF Add-On failed to extract result",
             )
 
+        # The addon response does not carry key_id (it's assigned by the backend
+        # and embedded in the cached document).  Merge key_ids back in so the
+        # caller receives the UUID needed to register each key with Fireblocks.
+        cached_key_ids = {
+            k.key_label: k.key_id for k in result_doc.content.keys if k.key_id
+        }
+        for key in content.keys:
+            key.key_id = cached_key_ids.get(key.key_label)
+
         return jsonify(content.model_dump(mode="json")), 200

@@ -154,11 +154,17 @@ def _payload_doc_wire(key_id, payload_xml=_PAYLOAD_XML):
     }
 
 
-def _import_result_doc_wire():
+def _import_result_doc_wire(with_key_ids=False):
+    """Build an import-result OSO document wire representation.
+
+    Set ``with_key_ids=True`` to include the UUID that the backend injects
+    before forwarding the document through OSO (simulating the enriched doc
+    the frontend receives).  The raw addon /wrap response has no key_id.
+    """
     content = {
         "keys": [
             {
-                "key_id": KEY_LABEL_TO_ID[key_label],
+                **({"key_id": KEY_LABEL_TO_ID[key_label]} if with_key_ids else {}),
                 "key_label": key_label,
                 "hash": "ab" * 32,
                 "checksum": "cdcdcd",
@@ -174,8 +180,9 @@ def _import_result_doc_wire():
 
 
 def _import_result_wire():
+    # The addon /wrap response does NOT include key_id; the backend assigns UUIDs.
     return {
-        "result": _import_result_doc_wire(),
+        "result": _import_result_doc_wire(with_key_ids=False),
         "key_blobs": [
             {
                 "key_label": key_label,
@@ -284,7 +291,8 @@ def test_backend_wrap_sends_bundle_and_persists_key_blobs(mode, client, keystore
     for key_uuid in keys:
         uuid.UUID(key_uuid)
 
-    # Only the ImportResultDocument (no key blobs) flows back through OSO
+    # Only the ImportResultDocument (no key blobs) flows back through OSO,
+    # and each key in the content must carry the UUID assigned by the backend.
     document_list = _download(client, mode)
 
     assert document_list.count == 1
@@ -293,6 +301,12 @@ def test_backend_wrap_sends_bundle_and_persists_key_blobs(mode, client, keystore
 
     metadata = json.loads(doc.metadata)
     assert metadata["ekmf_addon"]["document_type"] == "import_result"
+
+    content = json.loads(doc.content)
+    by_label = {k["key_label"]: k for k in content["keys"]}
+    assert set(by_label) == set(KEY_LABELS)
+    for lbl, entry in by_label.items():
+        uuid.UUID(entry["key_id"])  # must be a valid UUID
 
 
 @pytest.mark.parametrize("mode", ["backend"])
@@ -432,17 +446,19 @@ def test_frontend_import_state_machine(mode, client):
     assert response.status_code == 202
     assert response.get_json()["status"] == "payload_submitted"
 
-    # 4. The backend import result document arrives through OSO
-    response = _upload(client, mode, [_import_result_doc_wire()])
+    # 4. The backend import result document arrives through OSO; it is the
+    #    enriched version (key_id injected by the backend before transport).
+    response = _upload(client, mode, [_import_result_doc_wire(with_key_ids=True)])
     assert response.status_code == 200
 
     with requests_mock.Mocker() as mock:
+        # The addon /result response does NOT carry key_id — the frontend
+        # merges UUIDs from the cached (enriched) document.
         mock.post(
             f"{EKMF_ADDON_URL}/addon/ekmf/import/result",
             json={
                 "keys": [
                     {
-                        "key_id": KEY_LABEL_TO_ID[key_label],
                         "key_label": key_label,
                         "hash": "ab" * 32,
                         "checksum": "cdcdcd",
@@ -457,9 +473,10 @@ def test_frontend_import_state_machine(mode, client):
     assert response.status_code == 200
     result_keys = response.get_json()["keys"]
     assert [k["key_label"] for k in result_keys] == KEY_LABELS
-    # Each key in the result must carry its assigned uuid
-    for k in result_keys:
-        uuid.UUID(k["key_id"])
+    # Each key in the result must carry its assigned uuid (merged from cache)
+    assert [k["key_id"] for k in result_keys] == [
+        KEY_LABEL_TO_ID[lbl] for lbl in KEY_LABELS
+    ]
 
 
 @pytest.mark.parametrize("mode", ["backend"])

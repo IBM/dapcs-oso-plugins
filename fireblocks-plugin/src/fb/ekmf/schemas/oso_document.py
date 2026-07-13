@@ -72,7 +72,7 @@ class EkmfPayloadContent(BaseModel):
 
 
 class ImportedKey(BaseModel):
-    key_id: uuid.UUID
+    key_id: uuid.UUID | None = None
     key_label: str
     hash: HexBytes
     checksum: HexBytes

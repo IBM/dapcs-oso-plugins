@@ -429,8 +429,9 @@ class FBPlugin(PluginProtocol):
 
         # Rebuild the result document so each ImportedKey carries its assigned
         # uuid.  The frontend reads this to register keys with Fireblocks.
-        result_with_ids = import_result.result.model_copy(deep=True)
-        result_with_ids.content.keys = [
+        # OSODocument serialises `content` as a JSON string, so we work with
+        # the model directly and re-serialise after updating the keys list.
+        enriched_keys = [
             ImportedKey(
                 key_id=key_id_map[ik.key_label],
                 key_label=ik.key_label,
@@ -439,7 +440,10 @@ class FBPlugin(PluginProtocol):
             )
             for ik in import_result.result.content.keys
         ]
-        self.ekmf_state.enqueue_outbound(result_with_ids.model_dump(mode="json"))
+        import_result.result.content.keys = enriched_keys
+        self.ekmf_state.enqueue_outbound(
+            import_result.result.model_dump(mode="json")
+        )
 
     @staticmethod
     def _payload_key_types(payload_doc: EkmfPayloadDocument) -> dict[str, str]:
