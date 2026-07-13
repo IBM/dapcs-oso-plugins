@@ -324,11 +324,19 @@ class FBPlugin(PluginProtocol):
                     doc_type = parse_ekmf_document_type(doc.model_dump())
 
                     if doc_type == DocumentType.INIT:
-                        self._dispatch_keygen()
+                        try:
+                            self._dispatch_keygen()
+                        except Exception as e:
+                            logger.error("ekmf keygen dispatch raised an exception")
+                            logger.debug(f"Error: {e}", exc_info=True)
                         continue
 
                     if doc_type == DocumentType.EKMF_PAYLOAD:
-                        self._dispatch_wrap(doc.model_dump())
+                        try:
+                            self._dispatch_wrap(doc.model_dump())
+                        except Exception as e:
+                            logger.error("ekmf wrap dispatch raised an exception")
+                            logger.debug(f"Error: {e}", exc_info=True)
                         continue
 
                     if doc_type is not None:
