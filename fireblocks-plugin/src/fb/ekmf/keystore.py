@@ -41,11 +41,14 @@ class SigningKeyStore:
     def save_keys(self, keys: list[dict]) -> None:
         """Atomically persist imported key blobs.
 
-        Each entry has key_label, key_type, and encrypted_key (GREP11 key blob).
+        Each entry has key_id (uuid), key_label, key_type, and encrypted_key
+        (GREP11 key blob).  The file is keyed by uuid so Fireblocks can look
+        keys up by the signingDeviceKeyId it was given.
         """
         data = {}
         for key in keys:
-            data[key["key_label"]] = {
+            data[key["key_id"]] = {
+                "key_label": key["key_label"],
                 "key_type": key["key_type"],
                 "encrypted_key": base64.b64encode(key["encrypted_key"]).decode(),
             }
@@ -80,12 +83,12 @@ class SigningKeyStore:
                 pass
             raise
 
-    def get_all_keys(self) -> list[tuple[str, str, bytes]]:
-        """Return stored keys as (key_label, key_type, key_blob) tuples."""
+    def get_all_keys(self) -> list[tuple[str, str, str, bytes]]:
+        """Return stored keys as (key_id, key_label, key_type, key_blob) tuples."""
         result = []
-        for key_label, entry in self._keys.items():
+        for key_id, entry in self._keys.items():
             blob = base64.b64decode(entry["encrypted_key"])
-            result.append((key_label, entry["key_type"], blob))
+            result.append((key_id, entry["key_label"], entry["key_type"], blob))
         return result
 
     def _load(self) -> dict[str, dict]:

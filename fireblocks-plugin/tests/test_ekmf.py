@@ -106,6 +106,8 @@ _AES_PAYLOAD_XML = b"""<?xml version="1.0" encoding="UTF-8"?>
 """
 
 KEY_LABELS = ["test-ed25519-0", "test-secp256k1-0"]
+KEY_IDS = [str(uuid.uuid4()), str(uuid.uuid4())]
+KEY_LABEL_TO_ID = dict(zip(KEY_LABELS, KEY_IDS))
 
 
 def _init_doc_wire():
@@ -155,7 +157,12 @@ def _payload_doc_wire(key_id, payload_xml=_PAYLOAD_XML):
 def _import_result_doc_wire():
     content = {
         "keys": [
-            {"key_label": key_label, "hash": "ab" * 32, "checksum": "cdcdcd"}
+            {
+                "key_id": KEY_LABEL_TO_ID[key_label],
+                "key_label": key_label,
+                "hash": "ab" * 32,
+                "checksum": "cdcdcd",
+            }
             for key_label in KEY_LABELS
         ]
     }
@@ -263,13 +270,19 @@ def test_backend_wrap_sends_bundle_and_persists_key_blobs(mode, client, keystore
         assert document_content["wrapping_key_id"] == key_id
 
     keys = json.loads((keystore_path / "signing_keys.json").read_text())
-    assert set(keys) == set(KEY_LABELS)
-    assert keys["test-ed25519-0"]["key_type"] == "ed25519"
-    assert keys["test-secp256k1-0"]["key_type"] == "secp256k1"
+    # Keys are now indexed by UUID; verify labels and blobs are stored correctly
+    assert len(keys) == len(KEY_LABELS)
+    by_label = {v["key_label"]: (k, v) for k, v in keys.items()}
+    assert set(by_label) == set(KEY_LABELS)
+    assert by_label["test-ed25519-0"][1]["key_type"] == "ed25519"
+    assert by_label["test-secp256k1-0"][1]["key_type"] == "secp256k1"
     assert (
-        base64.b64decode(keys["test-ed25519-0"]["encrypted_key"])
+        base64.b64decode(by_label["test-ed25519-0"][1]["encrypted_key"])
         == b"fake-ep11-test-ed25519-0"
     )
+    # The UUIDs stored as keys must be valid UUIDs
+    for key_uuid in keys:
+        uuid.UUID(key_uuid)
 
     # Only the ImportResultDocument (no key blobs) flows back through OSO
     document_list = _download(client, mode)
@@ -429,6 +442,7 @@ def test_frontend_import_state_machine(mode, client):
             json={
                 "keys": [
                     {
+                        "key_id": KEY_LABEL_TO_ID[key_label],
                         "key_label": key_label,
                         "hash": "ab" * 32,
                         "checksum": "cdcdcd",
@@ -441,7 +455,11 @@ def test_frontend_import_state_machine(mode, client):
         response = client.get("/api/ekmf/import/result", headers=APPROVER_HEADERS)
 
     assert response.status_code == 200
-    assert [key["key_label"] for key in response.get_json()["keys"]] == KEY_LABELS
+    result_keys = response.get_json()["keys"]
+    assert [k["key_label"] for k in result_keys] == KEY_LABELS
+    # Each key in the result must carry its assigned uuid
+    for k in result_keys:
+        uuid.UUID(k["key_id"])
 
 
 @pytest.mark.parametrize("mode", ["backend"])
@@ -454,9 +472,11 @@ def test_ekmf_endpoints_not_available_in_backend_mode(mode, client):
 def test_keystore_round_trip(tmp_path):
     keystore = SigningKeyStore(tmp_path / "ekmf")
 
+    test_key_id = str(uuid.uuid4())
     keystore.save_keys(
         [
             {
+                "key_id": test_key_id,
                 "key_label": "test-secp256k1-0",
                 "key_type": "secp256k1",
                 "encrypted_key": b"fake-blob",
@@ -468,7 +488,9 @@ def test_keystore_round_trip(tmp_path):
 
     reloaded = SigningKeyStore(tmp_path / "ekmf")
 
-    assert reloaded.get_all_keys() == [("test-secp256k1-0", "secp256k1", b"fake-blob")]
+    assert reloaded.get_all_keys() == [
+        (test_key_id, "test-secp256k1-0", "secp256k1", b"fake-blob")
+    ]
     assert reloaded.load_wrapping_key() == {"key_id": "abc", "private_key": "ZmFrZQ=="}
 
 

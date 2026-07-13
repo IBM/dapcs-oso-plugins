@@ -19,6 +19,7 @@ from functools import cached_property
 
 import sys
 import logging
+import uuid
 
 from typing import Any, List, Literal
 
@@ -51,6 +52,7 @@ from .ekmf import (
 from .ekmf.schemas import (
     DocumentType,
     EkmfPayloadDocument,
+    ImportedKey,
     KeyBlob,
     WrappingKey,
 )
@@ -423,9 +425,21 @@ class FBPlugin(PluginProtocol):
             logger.debug(f"Status: {e.status_code}, Body: {e.body}")
             return
 
-        self._persist_imported_keys(key_types, import_result.key_blobs)
+        key_id_map = self._persist_imported_keys(key_types, import_result.key_blobs)
 
-        self.ekmf_state.enqueue_outbound(import_result.result.model_dump(mode="json"))
+        # Rebuild the result document so each ImportedKey carries its assigned
+        # uuid.  The frontend reads this to register keys with Fireblocks.
+        result_with_ids = import_result.result.model_copy(deep=True)
+        result_with_ids.content.keys = [
+            ImportedKey(
+                key_id=key_id_map[ik.key_label],
+                key_label=ik.key_label,
+                hash=ik.hash,
+                checksum=ik.checksum,
+            )
+            for ik in import_result.result.content.keys
+        ]
+        self.ekmf_state.enqueue_outbound(result_with_ids.model_dump(mode="json"))
 
     @staticmethod
     def _payload_key_types(payload_doc: EkmfPayloadDocument) -> dict[str, str]:
@@ -449,9 +463,20 @@ class FBPlugin(PluginProtocol):
 
     def _persist_imported_keys(
         self, key_types: dict[str, str], key_blobs: list[KeyBlob]
-    ) -> None:
+    ) -> dict[str, uuid.UUID]:
+        """Persist key blobs keyed by a freshly generated UUID.
+
+        Returns a mapping of ``key_label -> uuid`` so callers can include the
+        assigned identifiers in the result document sent back to the frontend.
+        """
+        # Assign a new UUID to each incoming key.
+        key_id_map: dict[str, uuid.UUID] = {
+            blob.key_label: uuid.uuid4() for blob in key_blobs
+        }
+
         new_keys = [
             {
+                "key_id": str(key_id_map[blob.key_label]),
                 "key_label": blob.key_label,
                 "key_type": key_types.get(blob.key_label, "aes"),
                 "encrypted_key": blob.encrypted_key,
@@ -461,17 +486,24 @@ class FBPlugin(PluginProtocol):
 
         # Merge with previously imported keys so a later import cannot drop
         # blobs that are already registered with Fireblocks.
-        new_labels = {key["key_label"] for key in new_keys}
+        new_uuids = {key["key_id"] for key in new_keys}
 
         existing_keys = [
-            {"key_label": label, "key_type": key_type, "encrypted_key": blob}
-            for label, key_type, blob in self.keystore.get_all_keys()
-            if label not in new_labels
+            {
+                "key_id": key_id,
+                "key_label": key_label,
+                "key_type": key_type,
+                "encrypted_key": blob,
+            }
+            for key_id, key_label, key_type, blob in self.keystore.get_all_keys()
+            if key_id not in new_uuids
         ]
 
         self.keystore.save_keys(existing_keys + new_keys)
 
         logger.info(f"Persisted {len(new_keys)} imported signing key(s)")
+
+        return key_id_map
 
     def status(self) -> V1_3.ComponentStatus:
         if self.mode == "frontend":
@@ -553,7 +585,7 @@ class FBPlugin(PluginProtocol):
                 if key_entry is None:
                     raise Exception(f"No imported key found for key id: '{key_id}'")
 
-                _, key_type, key_blob = key_entry
+                _, _key_label, key_type, key_blob = key_entry
 
                 if key_type not in KEY_TYPE_TO_MECHANISM:
                     raise Exception(

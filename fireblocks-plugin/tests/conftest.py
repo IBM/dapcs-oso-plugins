@@ -191,10 +191,12 @@ def seeded_keystore(keystore_path):
 
     keys = {
         SIGNING_DEVICE_KEY_ID: {
+            "key_label": "secp256k1-signing-key",
             "key_type": "secp256k1",
             "encrypted_key": base64.b64encode(b"fake-secp256k1-blob").decode(),
         },
-        "test-ed25519-0": {
+        "test-ed25519-uuid-0": {
+            "key_label": "test-ed25519-0",
             "key_type": "ed25519",
             "encrypted_key": base64.b64encode(b"fake-ed25519-blob").decode(),
         },
