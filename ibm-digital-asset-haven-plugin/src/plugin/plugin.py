@@ -31,11 +31,12 @@ from oso.framework.data.types import V1_3
 from oso.framework.plugin.base import PluginProtocol
 from oso.framework.plugin import current_oso_plugin
 
-FRONTEND_PORT=3002
-BACKEND_PORT =3003
+FRONTEND_PORT = 3002
+BACKEND_PORT = 3003
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
 
 class Plugin(PluginProtocol):
     frontendknownids = []
@@ -63,9 +64,8 @@ class Plugin(PluginProtocol):
             metadata = {
                 "display_id": transfer_id,
                 "launch_url": (
-                    f"{url}/v3/operations/wallets/"
-                    f"{wallet_id}/transfers/{transfer_id}"
-                )
+                    f"{url}/v3/operations/wallets/{wallet_id}/transfers/{transfer_id}"
+                ),
             }
             return metadata
 
@@ -77,19 +77,17 @@ class Plugin(PluginProtocol):
                 "launch_url": (
                     f"{url}/v3/operations/wallets/"
                     f"{wallet_id}/transactions/{transaction_id}"
-                )
+                ),
             }
             return metadata
 
         # Default fallback
         return {}
 
-
     def to_oso(self) -> V1_3.DocumentList:
         logger.debug(f"Entering to_oso(): ({self.mode})")
 
         docs: list[V1_3.Document] = []
-        url: str
 
         try:
             match self.mode:
@@ -100,13 +98,19 @@ class Plugin(PluginProtocol):
                         assert id
                         if id not in self.frontendknownids:
                             metadata_value = self.build_metadata(op)
-                            docs.append(V1_3.Document(
-                                id=id,
-                                content=json.dumps(op),
-                                metadata=metadata_value))
+                            docs.append(
+                                V1_3.Document(
+                                    id=id,
+                                    content=json.dumps(op),
+                                    metadata=metadata_value,
+                                )
+                            )
                             self.frontendknownids.append(id)
                         else:
-                            logger.debug(f"to_oso() ignoring operation handled previoulsy: id={id}")
+                            logger.debug(
+                                "to_oso() ignoring operation handled"
+                                f" previoulsy: id={id}"
+                            )
 
                 case "backend":
                     responses = get(get_completed_endpoint(BACKEND_PORT))
@@ -114,44 +118,58 @@ class Plugin(PluginProtocol):
                         for key, value in responses.items():
                             if key not in self.backendknownids:
                                 metadata_value = self.build_metadata(value)
-                                docs.append(V1_3.Document(
-                                    id=key,
-                                    content=json.dumps(value),
-                                    metadata=metadata_value))
+                                docs.append(
+                                    V1_3.Document(
+                                        id=key,
+                                        content=json.dumps(value),
+                                        metadata=metadata_value,
+                                    )
+                                )
                                 self.backendknownids.append(key)
                             else:
-                                logger.debug(f"to_oso() ignoring operation handled previoulsy: id={key}")
-            
+                                logger.debug(
+                                    "to_oso() ignoring operation handled"
+                                    f" previoulsy: id={key}"
+                                )
+
         except Exception as e:
             logger.error(f"ERROR: could not get documents: {e}")
-        
+
         logger.debug(f"to_oso() returning: {len(docs)} documents")
 
         return V1_3.DocumentList(documents=docs, count=len(docs))
 
-
     def to_isv(self, oso: V1_3.DocumentList) -> list[str]:
         logger.debug(f"entering to_isv: ({self.mode})")
-        failedPosts=0
+        failedPosts = 0
         for doc in oso.documents:
             try:
                 match self.mode:
                     case "frontend":
-                        data = { doc.id : json.loads(doc.content) }
+                        data = {doc.id: json.loads(doc.content)}
                         post(get_completed_endpoint(FRONTEND_PORT), data)
 
                     case "backend":
-                        data = [ json.loads(doc.content) ]
+                        data = [json.loads(doc.content)]
                         post(get_operations_endpoint(BACKEND_PORT), data)
 
             except Exception as e:
                 logger.error(f"ERROR: could not post document: {doc.id}, Error: {e}")
-                failures += 1
+                failedPosts += 1
                 continue
 
         logger.debug(f"to_isv() returning: {failedPosts=}")
         return ["OK"]
 
+    def on_events(self, events: V1_3.EventList) -> V1_3.EventResponse:
+        logger.debug(f"Entering on_events(): {events.count} event(s) received")
+        for event in events.events:
+            # Integration with DFNS
+            logger.info(
+                f"Operation {event.operationType} was performed in"
+                f" {event.queueType} queue"
+            )
+        return V1_3.EventResponse()
 
     def status(self) -> V1_3.ComponentStatus:
         if self.mode == "frontend":
@@ -162,12 +180,12 @@ class Plugin(PluginProtocol):
             )
 
         else:
-            status_url = f"http://localhost:3003/status"
+            status_url = "http://localhost:3003/status"
             try:
                 resp = requests.get(status_url, timeout=5)
                 resp.raise_for_status()
 
-                logger.debug(f"hsm-driver status successful!")
+                logger.debug("hsm-driver status successful!")
 
             except Exception as err:
                 logger.debug(f"Error in HSM Driver Status response: {err}")
@@ -178,13 +196,12 @@ class Plugin(PluginProtocol):
                     errors=[],
                 )
 
-            healthcheck_url = f"http://localhost:3003/healthcheck"
+            healthcheck_url = "http://localhost:3003/healthcheck"
             try:
                 resp = requests.get(healthcheck_url, timeout=5)
                 resp.raise_for_status()
 
-                logger.debug(f"hsm-driver healthcheck successful!")
-
+                logger.debug("hsm-driver healthcheck successful!")
 
             except Exception as err:
                 logger.debug(f"Error in HSM Driver HealthCheck response: {err}")
@@ -200,6 +217,7 @@ class Plugin(PluginProtocol):
                 status="OK",
                 errors=[],
             )
+
 
 def post(url: str, data: any) -> None:
     logger.debug(f"Entering post(): {url=}")
@@ -222,4 +240,3 @@ def get_operations_endpoint(port: str) -> str:
 
 def get_completed_endpoint(port: str) -> str:
     return f"http://localhost:{port}/completed"
-

@@ -300,6 +300,15 @@ class FBPlugin(PluginProtocol):
 
         return ["OK"]
 
+    def on_events(self, events: V1_3.EventList) -> V1_3.EventResponse:
+        logger.debug(f"Entering on_events(): {events.count} event(s) received")
+        for event in events.events:
+            logger.info(
+                f"Operation {event.operationType} was performed in"
+                f" {event.queueType} queue"
+            )
+        return V1_3.EventResponse()
+
     def status(self) -> V1_3.ComponentStatus:
         if self.mode == "frontend":
             return V1_3.ComponentStatus(
