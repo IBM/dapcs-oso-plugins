@@ -157,11 +157,11 @@ class BackendPluginManager:
                 json.dump(content, vault_file)
                 vault_file_path = vault_file.name
 
-            files = {"files": (vault_id, open(vault_file_path, "rb"))}
-            response = requests.post(
-                url=f"{self.cold_bridge_endpoint}/v1/feed/upload",
-                files=files,
-            )
+            with open(vault_file_path, "rb") as f:
+                response = requests.post(
+                    url=f"{self.cold_bridge_endpoint}/v1/feed/upload",
+                    files={"files": (vault_id, f)},
+                )
             response.raise_for_status()
         except requests.HTTPError:
             self.logger.error(
@@ -170,7 +170,8 @@ class BackendPluginManager:
                 response.text,
             )
             raise
-        except Exception:
+        except Exception as e:
+            self.logger.error("Unexpected error during upload: %s", e)
             raise
         finally:
             if vault_file_path:
