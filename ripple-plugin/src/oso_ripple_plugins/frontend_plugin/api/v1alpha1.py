@@ -32,10 +32,6 @@ documents_model = api.model(
     },
 )
 
-component_status_model = api.model(
-    "ComponentStatus", {"status": fields.String(), "error": fields.String()}
-)
-
 
 @api.route("/documents", methods=["GET"])
 class Download(Resource):
@@ -93,18 +89,19 @@ class Status(Resource):
         "Error",
         {
             "code": fields.String(description="Error code"),
-            "message": fields.String(description="Error message")
-        }
+            "message": fields.String(description="Error message"),
+        },
     )
 
-    # Define the component status model
     component_status_model = api.model(
         "ComponentStatus",
         {
             "status_code": fields.Integer(description="HTTP status code"),
             "status": fields.String(description="Human readable message"),
-            "errors": fields.List(fields.Nested(error_model), default=[], description="List of errors")
-        }
+            "errors": fields.List(
+                fields.Nested(error_model), default=[], description="List of errors"
+            ),
+        },
     )
 
     @api.response(code=200, description="Success", model=component_status_model)
@@ -119,12 +116,7 @@ class Status(Resource):
             return {
                 "status_code": 503,
                 "status": "Unavailable",
-                "errors": [{"code": "BACKEND_ERROR", "message": str(e)}]
+                "errors": [{"code": "BACKEND_ERROR", "message": str(e)}],
             }, 503
 
-        # Return a successful status
-        return {
-            "status_code": 200,
-            "status": "OK",
-            "errors": []
-        }, 200
+        return {"status_code": 200, "status": "OK", "errors": []}, 200

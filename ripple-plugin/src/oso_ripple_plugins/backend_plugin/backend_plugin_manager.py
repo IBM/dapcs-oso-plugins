@@ -25,7 +25,7 @@ import requests
 import urllib3
 from urllib3.exceptions import InsecureRequestWarning
 
-from oso_ripple_plugins.common import crypt, errors
+from oso_ripple_plugins.common import crypt
 
 urllib3.disable_warnings(InsecureRequestWarning)
 
