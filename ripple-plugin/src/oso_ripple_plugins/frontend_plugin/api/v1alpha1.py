@@ -37,10 +37,6 @@ documents_model = api.model(
     },
 )
 
-component_status_model = api.model(
-    "ComponentStatus", {"status": fields.String(), "error": fields.String()}
-)
-
 
 @api.route("/documents", methods=["GET"])
 class Download(Resource):
@@ -93,8 +89,23 @@ class Upload(Resource):
 
 @api.route("/status", methods=["GET"])
 class Status(Resource):
+    error_model = api.model(
+        "Error",
+        {
+            "code": fields.String(description="Error code"),
+            "message": fields.String(description="Error message"),
+        },
+    )
+
     component_status_model = api.model(
-        "ComponentStatus", {"status": fields.String(), "error": fields.String()}
+        "ComponentStatus",
+        {
+            "status_code": fields.Integer(description="HTTP status code"),
+            "status": fields.String(description="Human readable message"),
+            "errors": fields.List(
+                fields.Nested(error_model), default=[], description="List of errors"
+            ),
+        },
     )
 
     @api.response(code=200, description="Success", model=component_status_model)
@@ -103,7 +114,11 @@ class Status(Resource):
         try:
             current_app.fpm.backend_status()
         except Exception as e:
-            logger.exception(e)
-            abort(503)
+            logger.exception("Backend status check failed")
+            return {
+                "status_code": 503,
+                "status": "Unavailable",
+                "errors": [{"code": "BACKEND_ERROR", "message": str(e)}],
+            }, 503
 
-        return {"status": "OK"}, 200
+        return {"status_code": 200, "status": "OK", "errors": []}, 200

@@ -134,18 +134,54 @@ class FrontendPluginManager:
             "signature": base64.b64encode(signature).decode("utf-8"),
         }
 
-        response = requests.post(
-            f"https://{self.hmz_auth_hostname}/token",
-            data=data,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-            verify=self.verify,
-        )
+        try:
+            response = requests.post(
+                f"https://{self.hmz_auth_hostname}/token",
+                data=data,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                verify=self.verify,
+                timeout=(5, 30),
+            )
+        except requests.exceptions.Timeout as e:
+            self.logger.error("Timeout while requesting token: %s", e)
+            raise errors.NetworkError("Token request timeout") from e
+        except requests.exceptions.ConnectionError as e:
+            self.logger.error("Connection error while requesting token: %s", e)
+            raise errors.NetworkError("Token connection error") from e
+        except requests.exceptions.RequestException as e:
+            self.logger.error("Unexpected network error requesting token: %s", e)
+            raise errors.NetworkError("Unexpected token request error") from e
 
-        response.raise_for_status()
-        response_json = response.json()
+        if response.status_code in (401, 403):
+            self.logger.error(
+                "Authentication failed with status %s: %s",
+                response.status_code,
+                response.text,
+            )
+            raise errors.AuthenticationError("Authentication failed")
+
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            self.logger.error(
+                "HTTP error requesting token: %s - %s",
+                response.status_code,
+                response.text,
+            )
+            raise errors.TokenError(
+                f"Token endpoint returned HTTP {response.status_code}"
+            ) from e
+
+        try:
+            response_json = response.json()
+        except ValueError as e:
+            self.logger.error("Invalid JSON from token endpoint: %s", response.text)
+            raise errors.TokenError("Invalid JSON response from token endpoint") from e
+
         token = response_json.get("access_token")
         if not token:
-            raise Exception("Could not get token from response json")
+            self.logger.error("No access_token in response: %s", response_json)
+            raise errors.TokenError("Could not get token from response")
 
         self.logger.info("Successfully generated new JWT access token")
         return token, time.time()
@@ -177,8 +213,8 @@ class FrontendPluginManager:
         response = requests.get(
             url=url,
             headers={"Authorization": "Bearer " + token},
-            stream=True,
             verify=self.verify,
+            timeout=30,
         )
         response.raise_for_status()
         vault_json = response.json()
@@ -199,6 +235,11 @@ class FrontendPluginManager:
 
                 try:
                     document_id = item.get(id_key)
+                    if not document_id:
+                        self.logger.warning(
+                            f"Missing {id_key} in item for {content_key}, skipping"
+                        )
+                        continue
                     self.logger.info(f"Saving document {document_id} for bulk download")
 
                     content = copy.deepcopy(empty_content)
@@ -219,7 +260,9 @@ class FrontendPluginManager:
                         f"Successfully saved document {document_id} for bulk download"
                     )
                 except Exception as e:
-                    self.logger.exception(e)
+                    self.logger.exception(
+                        f"Failed processing document in {content_key}: %s", e
+                    )
                     continue
 
         documents = []
