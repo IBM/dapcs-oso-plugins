@@ -27,7 +27,7 @@ from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from oso.framework.data.types import V1_3
+from oso.framework.data.types import V1_3, V1_5
 from oso.framework.plugin.base import PluginProtocol
 from oso.framework.plugin import current_oso_plugin
 
@@ -161,7 +161,7 @@ class Plugin(PluginProtocol):
         logger.debug(f"to_isv() returning: {failedPosts=}")
         return ["OK"]
 
-    def on_events(self, events: V1_3.EventList) -> V1_3.EventResponse:
+    def on_events(self, events: V1_5.EventList) -> V1_5.EventResponse:
         logger.debug(f"Entering on_events(): {events.count} event(s) received")
         for event in events.events:
             # Integration with DFNS
@@ -169,7 +169,7 @@ class Plugin(PluginProtocol):
                 f"Operation {event.operationType} was performed in"
                 f" {event.queueType} queue"
             )
-        return V1_3.EventResponse()
+        return V1_5.EventResponse()
 
     def status(self) -> V1_3.ComponentStatus:
         if self.mode == "frontend":
