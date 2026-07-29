@@ -27,7 +27,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from werkzeug.exceptions import NotFound
 
-from oso.framework.data.types import V1_3
+from oso.framework.data.types import V1_3, V1_5
 from oso.framework.plugin.base import PluginProtocol
 from oso.framework.plugin import current_oso_plugin, current_oso_plugin_app
 from oso.framework.plugin.addons.signing_server import SigningServerAddon, KeyType
@@ -299,6 +299,15 @@ class FBPlugin(PluginProtocol):
                     self.signed_statuses.append(message_status)
 
         return ["OK"]
+
+    def on_events(self, events: V1_5.EventList) -> V1_5.EventResponse:
+        logger.debug(f"Entering on_events(): {events.count} event(s) received")
+        for event in events.events:
+            logger.info(
+                f"Operation {event.operationType} was performed in"
+                f" {event.queueType} queue"
+            )
+        return V1_5.EventResponse()
 
     def status(self) -> V1_3.ComponentStatus:
         if self.mode == "frontend":

@@ -341,6 +341,7 @@ def app(
     grpc_stub_mock,
 ):
     monkeypatch.setenv("PLUGIN__MODE", mode)
+    monkeypatch.setenv("PLUGIN__SCHEMA", "v1.5")
     monkeypatch.setenv(
         "PLUGIN__APPLICATION",
         "fb.plugin:FBPlugin",
