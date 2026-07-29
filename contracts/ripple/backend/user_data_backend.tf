@@ -58,7 +58,7 @@ locals {
   # shared pod network namespace. cold-bridge is told the matching endpoint
   # via Vault__GrpcEndpoints__N. See: DAPCS-1965.
   resolved_vaults = [
-    for i, v in local.resolved_vaults_raw : merge(v, { grpc_port = 10001 + i })
+    for i, v in local.resolved_vaults_raw : merge(v, { grpc_port = 10001 + i, platform = "kms" })
   ]
 }
 
@@ -78,6 +78,10 @@ resource "local_file" "podman-play" {
       enable_ep11server = var.INTERNAL_GREP11,
       crypto_pass_enable = var.CRYPTO_PASSTHROUGH_ENABLEMENT,
       grep11_image = var.GREP11_IMAGE,
+      debug             = var.DEBUG ? "true" : "false",
+      ssh_pubkey        = var.SSH_PUBKEY,
+      ssh_port          = var.SSH_PORT,
+      ssh_password      = var.SSH_PASSWORD,
     } },
   )
   filename = "podman-play/play.yml"
@@ -240,4 +244,3 @@ ep11crypto:
   domain: "${var.DOMAIN}"
 EOT
 }
-
