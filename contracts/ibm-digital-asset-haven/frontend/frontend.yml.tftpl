@@ -25,6 +25,8 @@ spec:
           value: "frontend"
         - name: BASE_URL
           value: ${tpl.base_url}
+        - name: PASSIVE_MODE
+          value: ${tpl.passive_mode}
     - name: frontend_plugin_proxy
       image: ${tpl.plugin_image}
       command:

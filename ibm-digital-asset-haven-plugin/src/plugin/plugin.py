@@ -87,6 +87,7 @@ class Plugin(PluginProtocol):
 
     def to_oso(self) -> V1_3.DocumentList:
         logger.debug(f"Entering to_oso(): ({self.mode})")
+        is_passive = os.getenv("PASSIVE_MODE")
 
         docs: list[V1_3.Document] = []
         url: str
@@ -94,19 +95,22 @@ class Plugin(PluginProtocol):
         try:
             match self.mode:
                 case "frontend":
-                    operations = get(get_operations_endpoint(FRONTEND_PORT))
-                    for op in operations:
-                        id = op["uuid"]
-                        assert id
-                        if id not in self.frontendknownids:
-                            metadata_value = self.build_metadata(op)
-                            docs.append(V1_3.Document(
-                                id=id,
-                                content=json.dumps(op),
-                                metadata=metadata_value))
-                            self.frontendknownids.append(id)
-                        else:
-                            logger.debug(f"to_oso() ignoring operation handled previoulsy: id={id}")
+                    if is_passive == "false":
+                        operations = get(get_operations_endpoint(FRONTEND_PORT))
+                        for op in operations:
+                            id = op["uuid"]
+                            assert id
+                            if id not in self.frontendknownids:
+                                metadata_value = self.build_metadata(op)
+                                docs.append(V1_3.Document(
+                                    id=id,
+                                    content=json.dumps(op),
+                                    metadata=metadata_value))
+                                self.frontendknownids.append(id)
+                            else:
+                                logger.debug(f"to_oso() ignoring operation handled previoulsy: id={id}")
+                    else:
+                        logger.debug(f"Passive Mode is Set to true")
 
                 case "backend":
                     responses = get(get_completed_endpoint(BACKEND_PORT))
@@ -146,7 +150,7 @@ class Plugin(PluginProtocol):
 
             except Exception as e:
                 logger.error(f"ERROR: could not post document: {doc.id}, Error: {e}")
-                failures += 1
+                failedPosts += 1
                 continue
 
         logger.debug(f"to_isv() returning: {failedPosts=}")
