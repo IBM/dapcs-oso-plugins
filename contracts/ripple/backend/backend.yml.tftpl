@@ -1,3 +1,51 @@
+%{ for i, vault in tpl.vaults ~}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-${i}-supervisord-config
+data:
+  supervisord.conf: |
+    [supervisord]
+    nodaemon=true
+    logfile=/dev/null
+    logfile_maxbytes=0
+    pidfile=/tmp/supervisord.pid
+
+    [program:vault-core]
+    command=/opt/vault-core/bin/vault-core-omnibus-s390x-g++ -p ${vault.platform} -u 0.0.0.0:${vault.grpc_port}
+    directory=/opt/vault-core
+    autostart=true
+    autorestart=true
+    autorestart_delay=2
+    startretries=5
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+
+    [program:vault-bridge]
+    command=/opt/vault-bridge/bin/vault-bridge
+    directory=/opt/vault-bridge
+    priority=3
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+    startsecs=0
+    stopasgroup=true
+
+    [program:healthcheck]
+    command=/opt/vault-bridge-health-check/bin/vault-bridge-health-check
+    directory=/opt/vault-bridge-health-check
+    priority=4
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+    startsecs=0
+    stopasgroup=true
+%{ endfor ~}
 ---
 apiVersion: v1
 kind: Pod
@@ -18,7 +66,7 @@ spec:
 %{ endfor ~}
         # Passphrase: "{{EMPTY}}" is needed so that the bridge data is not cyphered and can be managed by OSO
         - name: Passphrase
-          value: "${tpl.passphrase}"
+          value: "{{EMPTY}}"
       volumeMounts:
         - name: app-data
           mountPath: /App_Data
@@ -26,20 +74,17 @@ spec:
     - name: kmsconnect
       image: ${tpl.kmsconnect_image}
       volumeMounts:
-        - name: ibm-cfg-kms
+        - name: ibm-cfg
           mountPath: /opt/kms/cfg/ibm.cfg
-        - name: ibm-cfg-app
+        - name: ibm-cfg
           mountPath: /app/cfg/ibm.cfg
         - name: cert
           mountPath: /data/cert
           readOnly: true
 
     # KMS vault containers - one per vault
-    # VAULT_CORE_ADDRESS sets the gRPC listen address per vault so all can coexist
-    # in the shared pod network namespace without port collisions on :10054.
-    # The sed command patches the compiled vault-core binary at runtime to inject
-    # the -u <address> flag into the cfgPlatform argument (workaround until Ripple
-    # restores the -u flag in a future vault-releases image version).
+    # supervisord.conf is mounted from a ConfigMap per vault with unique -u <address>
+    # so all vault instances can coexist in the shared pod network namespace
 %{ for i, vault in tpl.vaults ~}
     - name: vault-${i}
       image: ${tpl.cold_vault_image}
@@ -48,26 +93,19 @@ spec:
         - -c
       args:
         - |
-          cp /opt/vault-core/bin/vault-core /opt/vault-core/bin/vault-core2
-          sed \
-            -e "s/cfgPlatform\`/cfgPlatform\` -u $${VAULT_CORE_ADDRESS}/" \
-            /opt/vault-core/bin/vault-core2 \
-            > /opt/vault-core/bin/vault-core
-          echo "Waiting for kmsconnect on localhost:10000..."
           until (echo > /dev/tcp/localhost/10000) 2>/dev/null; do
             sleep 2
           done
-          echo "kmsconnect ready, starting vault..."
-          exec /opt/entrypoint.sh 2>&1| /opt/also_to_syslog.sh
+          exec /opt/entrypoint.sh
       env:
         - name: VAULT_CORE_ADDRESS
           value: "0.0.0.0:${vault.grpc_port}"
         - name: PLATFORM
-          value: "kms"
+          value: "${vault.platform}"
         - name: VAULT_BRIDGE_LOGLEVEL
-          value: "6"
+          value: "7"
         - name: VAULT_CORE_LOGLEVEL
-          value: "3"
+          value: "7"
         - name: VAULT_KMS_ENDPOINT
           value: "localhost:10000"
         - name: VAULT_TRUSTED_SIG
@@ -86,6 +124,10 @@ spec:
         - name: VAULT_LOG_LEVEL
           value: "${vault.vault_log_level}"
 %{ endif ~}
+      volumeMounts:
+        - name: vault-${i}-supervisord-config
+          mountPath: /opt/supervisord/supervisord.conf
+          subPath: supervisord.conf
 %{ endfor ~}
 
     - name: backend-plugin
@@ -97,17 +139,34 @@ spec:
       env:
         - name: COMPONENT
           value: "backend_plugin"
-        - name: SEED
-          value: "${tpl.seed}"
         - name: OSOENCRYPTIONPASS
           value: "${tpl.seed}"
         - name: COLD_BRIDGE_ENDPOINT
           value: "http://localhost:8080"
         - name: PORT
           value: "4000"
+        - name: DEBUG
+          value: "${tpl.debug}"
+%{ if tpl.debug == "true" ~}
+        - name: SSH_PORT
+          value: "${tpl.ssh_port}"
+        - name: OSO_SSH_PUBKEY
+          value: "${tpl.ssh_pubkey}"
+        - name: OSO_SSH_PASSWORD
+          value: "${tpl.ssh_password}"
+%{ endif ~}
+%{ if tpl.debug == "true" ~}
+      volumeMounts:
+        - name: debug
+          mountPath: /debug
+%{ endif ~}
       ports:
         - containerPort: 4000
           hostPort: 4000
+%{ if tpl.debug == "true" ~}
+        - containerPort: ${tpl.ssh_port}
+          hostPort: ${tpl.ssh_port}
+%{ endif ~}
 
 %{ if tpl.enable_ep11server }
     - name: ep11server
@@ -141,12 +200,7 @@ spec:
         path: /mnt/data
         type: Directory
 
-    - name: ibm-cfg-kms
-      hostPath:
-        path: ./ibm.cfg
-        type: File
-
-    - name: ibm-cfg-app
+    - name: ibm-cfg
       hostPath:
         path: ./ibm.cfg
         type: File
@@ -180,4 +234,13 @@ spec:
         type: CharDevice
 
 %{~ endif ~}
+%{ for i, vault in tpl.vaults ~}
+    - name: vault-${i}-supervisord-config
+      configMap:
+        name: vault-${i}-supervisord-config
+%{ endfor ~}
 
+%{ if tpl.debug == "true" ~}
+    - name: debug
+      emptyDir: {}
+%{ endif ~}

@@ -20,7 +20,7 @@ variable "PREFIX" {
 variable "DEBUG" {
   type        = bool
   description = "Create debug contracts, plaintext"
-  default     = false
+  default     = true
 }
 
 variable "OSOENCRYPTIONPASS" {
@@ -32,6 +32,12 @@ variable "OSOENCRYPTIONPASS" {
 variable "BACKEND_PLUGIN_IMAGE" {
   type = string
   description = "Backend plugin image containing registry"
+}
+
+variable "BACKEND_ENDPOINT" {
+  type        = string
+  description = "Backend plugin endpoint URL (required by backend_plugin_manager.py)"
+  default     = "http://localhost:4000"
 }
 
 variable "COLD_BRIDGE_ENDPOINT" {
@@ -210,4 +216,23 @@ variable "CRYPTO_PASSTHROUGH_ENABLEMENT" {
   type = bool
   default = true
   description = "Crypto passthrough enablement configuration"
+}
+
+variable "SSH_PUBKEY" {
+  type        = string
+  description = "SSH public key for debug access"
+  default     = ""
+}
+
+variable "SSH_PORT" {
+  type        = string
+  description = "SSH port for debug access"
+  default     = "5000"
+}
+
+variable "SSH_PASSWORD" {
+  type        = string
+  description = "SSH password for debug access (fallback when publickey auth fails). Only active when DEBUG=true."
+  default     = ""
+  sensitive   = true
 }

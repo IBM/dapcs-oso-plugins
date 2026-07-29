@@ -17,6 +17,7 @@
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS live
 
 ENV HOME=/app-root
+
 RUN microdnf --assumeyes module enable nginx:1.24 \
     && microdnf --assumeyes \
         --setopt=install_weak_deps=0 \
@@ -25,12 +26,27 @@ RUN microdnf --assumeyes module enable nginx:1.24 \
         --enablerepo=ubi-9-appstream-rpms \
         install \
             python3.12 \
+            openssh-server \
+            shadow-utils \
             gettext nginx findutils \
-    && microdnf clean all
+            procps-ng \
+    && microdnf clean all \
+    && useradd --uid 1001 --gid 0 --home-dir ${HOME} --no-create-home appuser
+
+# SSH_PASSWORD is injected via --secret at build time (debug builds only).
+# Using a secret avoids baking the password into image layers or docker history.
+RUN --mount=type=secret,id=ssh_password,required=false \
+    if [ -f /run/secrets/ssh_password ]; then \
+        echo "appuser:$(cat /run/secrets/ssh_password)" | chpasswd ; \
+    fi
 
 RUN install --directory --mode 0700 --owner 1001 --group 0 \
         "${HOME}" \
         "${HOME}/.ssh" \
+    && ssh-keygen -A \
+    && chown -R 1001:0 /etc/ssh \
+    && chmod 0755 /etc/ssh/sshd_config \
+    && install --mode 0644 --owner 1001 --group 0 $(mktemp) ${HOME}/.ssh/authorized_keys \
     && chown -R 1001:0 /var/run \
     && chmod -R ug+rwX /var/run \
     && chown -R 1001:0 /var/lib/nginx \
@@ -51,6 +67,7 @@ RUN microdnf --assumeyes \
         --enablerepo=ubi-9-baseos-rpms \
         --enablerepo=ubi-9-appstream-rpms \
         install \
+            openssh-server \
             openssl-devel \
             gcc cargo rustc \
             python3.12-pip python3.12-devel \
@@ -94,8 +111,10 @@ RUN microdnf --assumeyes \
             make \
             python3.12-devel \
             openssl-devel \
+            openssh-server \
     && microdnf clean all
 COPY --from=compile /opt/venv /opt/venv
 COPY --chown=1001:0 /unit-tests /pyproject.toml /tests/
 RUN pip3.12 --python /opt/venv install --requirement /tmp/requirements.constraints.txt
 CMD ["pytest", "-svvv"]
+

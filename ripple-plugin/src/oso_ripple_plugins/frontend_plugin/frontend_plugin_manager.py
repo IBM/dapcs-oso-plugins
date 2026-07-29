@@ -36,9 +36,9 @@ from oso_ripple_plugins.common import crypt, errors, utils
 
 class FrontendPluginManager:
     def __init__(self):
-        if "HMZ_USER_SK" not in os.environ:
+        if "SK" not in os.environ:
             raise errors.ConfigError("Harmonize OSO user server key not found")
-        private_key_b64 = os.environ["HMZ_USER_SK"]
+        private_key_b64 = os.environ["SK"]
         private_key_decoded = base64.b64decode(private_key_b64)
         self.private_key = load_pem_private_key(private_key_decoded, password=None)
         self.public_key = base64.b64encode(
@@ -68,7 +68,7 @@ class FrontendPluginManager:
             raise errors.ConfigError("VAULTID not found")
         self.vaultids = os.environ["VAULTID"].split()
 
-        self.seed = os.environ.get("OSOENCRYPTIONPASS", "")
+        self.seed = os.environ.get("SEED", "")
 
         self.root_cert_b64 = os.environ.get("ROOTCERT")
         with tempfile.NamedTemporaryFile(delete=False) as root_cert_file:
