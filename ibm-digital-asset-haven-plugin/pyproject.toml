@@ -19,7 +19,7 @@ dependencies = [
     "structlog",
     "werkzeug==3.1.6",
     "pydantic",
-    "pydantic-settings",
+    "pydantic-settings==2.14.2",
     "gunicorn>=23.0.0",
     "python-dotenv>=1.2.2",
     "click>=8.3.3",
