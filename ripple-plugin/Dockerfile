@@ -17,36 +17,26 @@
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS live
 
 ENV HOME=/app-root
-
-RUN microdnf --assumeyes module enable nginx:1.24 \
+RUN --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum.repos.d/centos.repo,target=/etc/yum.repos.d/centos.repo \
+    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial,target=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial \
+    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum/vars/stream,target=/etc/yum/vars/stream \
+    rpm --install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
+    && microdnf --assumeyes module enable nginx:1.24 \
     && microdnf --assumeyes \
         --setopt=install_weak_deps=0 \
         --disablerepo='*' \
         --enablerepo=ubi-9-baseos-rpms \
         --enablerepo=ubi-9-appstream-rpms \
+        --enablerepo=ubi-9-codeready-builder-rpms \
+        --enablerepo=epel \
         install \
-            python3.12 \
-            openssh-server \
-            shadow-utils \
+            python3.13 \
             gettext nginx findutils \
-            procps-ng \
-    && microdnf clean all \
-    && useradd --uid 1001 --gid 0 --home-dir ${HOME} --no-create-home appuser
-
-# SSH_PASSWORD is injected via --secret at build time (debug builds only).
-# Using a secret avoids baking the password into image layers or docker history.
-RUN --mount=type=secret,id=ssh_password,required=false \
-    if [ -f /run/secrets/ssh_password ]; then \
-        echo "appuser:$(cat /run/secrets/ssh_password)" | chpasswd ; \
-    fi
+    && microdnf clean all
 
 RUN install --directory --mode 0700 --owner 1001 --group 0 \
         "${HOME}" \
         "${HOME}/.ssh" \
-    && ssh-keygen -A \
-    && chown -R 1001:0 /etc/ssh \
-    && chmod 0755 /etc/ssh/sshd_config \
-    && install --mode 0644 --owner 1001 --group 0 $(mktemp) ${HOME}/.ssh/authorized_keys \
     && chown -R 1001:0 /var/run \
     && chmod -R ug+rwX /var/run \
     && chown -R 1001:0 /var/lib/nginx \
@@ -60,32 +50,37 @@ RUN install --directory --mode 0700 --owner 1001 --group 0 \
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS compile
 
 ENV HOME=/app-root
-RUN microdnf --assumeyes \
+RUN --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum.repos.d/centos.repo,target=/etc/yum.repos.d/centos.repo \
+    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial,target=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial \
+    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum/vars/stream,target=/etc/yum/vars/stream \
+    rpm --install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
+    && microdnf --assumeyes \
         --setopt=install_weak_deps=0 \
         --setopt=keepcache=0 \
         --disablerepo='*' \
         --enablerepo=ubi-9-baseos-rpms \
         --enablerepo=ubi-9-appstream-rpms \
+        --enablerepo=ubi-9-codeready-builder-rpms \
+        --enablerepo=epel \
         install \
-            openssh-server \
             openssl-devel \
             gcc cargo rustc \
-            python3.12-pip python3.12-devel \
+            python3.13 python3.13-pip python3.13-devel \
     && mkdir -p "${HOME}"
-ARG PIP_INDEX_URL=https://pypi.org/simple 
+ARG PIP_INDEX_URL=https://pypi.org/simple
 
 COPY /requirements*.txt /tmp
 RUN --mount=type=secret,id=netrc,target=${HOME}/.netrc,mode=0600 \
-    pip3.12 install --upgrade --require-hashes \
+    pip3.13 install --upgrade --require-hashes \
         --requirement <(gawk 'BEGIN { RS = "[^\\\\]\n" } /pip==/ { print }' /tmp/requirements.constraints.txt) \
-    && pip3.12 install --requirement /tmp/requirements.build.txt \
-    && python3.12 -m venv --without-pip /opt/venv \
-    && pip3.12 --python /opt/venv install --requirement /tmp/requirements.txt
+    && pip3.13 install --requirement /tmp/requirements.build.txt \
+    && python3.13 -m venv --without-pip /opt/venv \
+    && pip3.13 --python /opt/venv install --requirement /tmp/requirements.txt
 
 COPY /src/oso_ripple_plugins /src/oso_ripple_plugins
 COPY /src/setup.py /src
-RUN pip3.12 wheel --wheel-dir /build --no-index --no-build-isolation /src \
-    && pip3.12 --python /opt/venv install --no-index --find-links /build oso_ripple_plugins
+RUN pip3.13 wheel --wheel-dir /build --no-index --no-build-isolation /src \
+    && pip3.13 --python /opt/venv install --no-index --find-links /build oso_ripple_plugins
 
 FROM live AS release
 
@@ -101,20 +96,23 @@ CMD [ "/oso-root/common/entrypoints/entrypoint.sh" ]
 FROM compile AS test
 
 ENV PATH="/opt/venv/bin:$PATH"
-RUN microdnf --assumeyes \
+RUN --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum.repos.d/centos.repo,target=/etc/yum.repos.d/centos.repo \
+    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial,target=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial \
+    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum/vars/stream,target=/etc/yum/vars/stream \
+    microdnf --assumeyes \
         --setopt=install_weak_deps=0 \
         --disablerepo='*' \
         --enablerepo=ubi-9-baseos-rpms \
         --enablerepo=ubi-9-appstream-rpms \
+        --enablerepo=ubi-9-codeready-builder-rpms \
+        --enablerepo=epel \
         install \
             gcc \
             make \
-            python3.12-devel \
+            python3.13-devel \
             openssl-devel \
-            openssh-server \
     && microdnf clean all
 COPY --from=compile /opt/venv /opt/venv
 COPY --chown=1001:0 /unit-tests /pyproject.toml /tests/
-RUN pip3.12 --python /opt/venv install --requirement /tmp/requirements.constraints.txt
+RUN pip3.13 --python /opt/venv install --requirement /tmp/requirements.constraints.txt
 CMD ["pytest", "-svvv"]
-
