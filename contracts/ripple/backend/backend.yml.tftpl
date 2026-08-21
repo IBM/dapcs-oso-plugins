@@ -1,51 +1,4 @@
-%{ for i, vault in tpl.vaults ~}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: vault-${i}-supervisord-config
-data:
-  supervisord.conf: |
-    [supervisord]
-    nodaemon=true
-    logfile=/dev/null
-    logfile_maxbytes=0
-    pidfile=/tmp/supervisord.pid
-
-    [program:vault-core]
-    command=/opt/vault-core/bin/vault-core-omnibus-s390x-g++ -p ${vault.platform} -u 0.0.0.0:${vault.grpc_port}
-    directory=/opt/vault-core
-    autostart=true
-    autorestart=true
-    autorestart_delay=2
-    startretries=5
-    stdout_logfile=/dev/fd/1
-    stdout_logfile_maxbytes=0
-    stderr_logfile=/dev/fd/2
-    stderr_logfile_maxbytes=0
-
-    [program:vault-bridge]
-    command=/opt/vault-bridge/bin/vault-bridge
-    directory=/opt/vault-bridge
-    priority=3
-    stdout_logfile=/dev/fd/1
-    stdout_logfile_maxbytes=0
-    stderr_logfile=/dev/fd/2
-    stderr_logfile_maxbytes=0
-    startsecs=0
-    stopasgroup=true
-
-    [program:healthcheck]
-    command=/opt/vault-bridge-health-check/bin/vault-bridge-health-check
-    directory=/opt/vault-bridge-health-check
-    priority=4
-    stdout_logfile=/dev/fd/1
-    stdout_logfile_maxbytes=0
-    stderr_logfile=/dev/fd/2
-    stderr_logfile_maxbytes=0
-    startsecs=0
-    stopasgroup=true
-%{ endfor ~}
+${tpl.supervisord_configmaps}
 ---
 apiVersion: v1
 kind: Pod
@@ -86,7 +39,7 @@ spec:
     # supervisord.conf is mounted from a ConfigMap per vault with unique -u <address>
     # so all vault instances can coexist in the shared pod network namespace
 %{ for i, vault in tpl.vaults ~}
-    - name: vault-${i}
+    - name: vault-${vault.num}
       image: ${tpl.cold_vault_image}
       command:
         - /bin/bash
@@ -116,16 +69,8 @@ spec:
           value: "http://localhost:8080/internal/v1"
         - name: HMZ_FEATURE_OPTIONAL_MAXIMUM_FEE
           value: "true"
-%{ if vault.log_level != "" ~}
-        - name: HMZ_LOG_LEVEL
-          value: "${vault.log_level}"
-%{ endif ~}
-%{ if vault.vault_log_level != "" ~}
-        - name: VAULT_LOG_LEVEL
-          value: "${vault.vault_log_level}"
-%{ endif ~}
       volumeMounts:
-        - name: vault-${i}-supervisord-config
+        - name: vault-${vault.num}-supervisord-config
           mountPath: /opt/supervisord/supervisord.conf
           subPath: supervisord.conf
 %{ endfor ~}
@@ -145,28 +90,9 @@ spec:
           value: "http://localhost:8080"
         - name: PORT
           value: "4000"
-        - name: DEBUG
-          value: "${tpl.debug}"
-%{ if tpl.debug == "true" ~}
-        - name: SSH_PORT
-          value: "${tpl.ssh_port}"
-        - name: OSO_SSH_PUBKEY
-          value: "${tpl.ssh_pubkey}"
-        - name: OSO_SSH_PASSWORD
-          value: "${tpl.ssh_password}"
-%{ endif ~}
-%{ if tpl.debug == "true" ~}
-      volumeMounts:
-        - name: debug
-          mountPath: /debug
-%{ endif ~}
       ports:
         - containerPort: 4000
           hostPort: 4000
-%{ if tpl.debug == "true" ~}
-        - containerPort: ${tpl.ssh_port}
-          hostPort: ${tpl.ssh_port}
-%{ endif ~}
 
 %{ if tpl.enable_ep11server }
     - name: ep11server
@@ -235,12 +161,8 @@ spec:
 
 %{~ endif ~}
 %{ for i, vault in tpl.vaults ~}
-    - name: vault-${i}-supervisord-config
+    - name: vault-${vault.num}-supervisord-config
       configMap:
-        name: vault-${i}-supervisord-config
+        name: vault-${vault.num}-supervisord-config
 %{ endfor ~}
 
-%{ if tpl.debug == "true" ~}
-    - name: debug
-      emptyDir: {}
-%{ endif ~}

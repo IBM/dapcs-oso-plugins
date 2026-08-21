@@ -44,10 +44,10 @@ BACKEND_WORKLOADS=[
     hipersocket34: false,
     workload: "$BACKEND",
     persistent_vol: {
-      volume_name = "vault_vol_lpar3",
-      env_seed = "vaultseed1I23456780",
+      volume_name = "vault_vol",
+      env_seed = "vaultseed2",
       prev_seed = "",
-      volume_path = "/var/lib/libvirt/images/oso/vault_vol_lpar3.qcow2"
+      volume_path = "/var/lib/libvirt/images/oso/vault-data.qcow2"
     }
   }
 ]

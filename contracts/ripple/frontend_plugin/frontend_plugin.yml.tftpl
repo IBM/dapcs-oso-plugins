@@ -4,7 +4,7 @@ metadata:
   name: frontend-plugin-pod
 spec:
   containers:
-    - name: frontend-plugin
+    - name: frontend_plugin
       image: ${tpl.image}
       envFrom:
         - configMapRef:
@@ -18,17 +18,23 @@ spec:
         - name: SK
           value: "${tpl.SK}"
         - name: VAULTID
-          value: "${tpl.VAULTID}"
+          value: "${tpl.VAULT_IDS}"
         - name: HMZ_AUTH_HOSTNAME
           value: "${tpl.HMZ_AUTH_HOSTNAME}"
+        - name: HMZ_AUTH_PATH
+          value: "${tpl.HMZ_AUTH_PATH}"
+        - name: HMZ_AUTH_CUSTOMERID
+          value: "${tpl.HMZ_AUTH_CUSTOMERID}"
         - name: HMZ_API_HOSTNAME
           value: "${tpl.HMZ_API_HOSTNAME}"
         - name: ROOTCERT
           value: "${tpl.ROOTCERT}"
-        - name: SEED 
+        - name: SEED
           value: "${tpl.SEED}"
         - name: TOKEN_EXP
           value: "${tpl.TOKEN_EXP}"
+        - name: BATCH_UPLOAD_SIZE
+          value: "${tpl.BATCH_UPLOAD_SIZE}"
       ports:
         - containerPort: 4000
           hostPort: 4000

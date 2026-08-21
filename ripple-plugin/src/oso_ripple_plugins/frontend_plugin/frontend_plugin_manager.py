@@ -16,6 +16,7 @@
 
 import base64
 import copy
+import io
 import json
 import logging
 import os
@@ -37,7 +38,7 @@ from oso_ripple_plugins.common import crypt, errors, utils
 class FrontendPluginManager:
     def __init__(self):
         if "SK" not in os.environ:
-            raise errors.ConfigError("Harmonize OSO user server key not found")
+            raise errors.ConfigError("SK not found")
         private_key_b64 = os.environ["SK"]
         private_key_decoded = base64.b64decode(private_key_b64)
         self.private_key = load_pem_private_key(private_key_decoded, password=None)
@@ -76,11 +77,19 @@ class FrontendPluginManager:
 
         if "TOKEN_EXP" not in os.environ:
             raise errors.ConfigError("TOKEN_EXP not found")
-        self.token_exp = os.environ.get("TOKEN_EXP")
+        self.token_exp = os.environ["TOKEN_EXP"]
 
         self.token_exp_in_secs = utils.parse_wait_time(self.token_exp)
         if self.token_exp_in_secs == 0:
             raise errors.ConfigError("TOKEN_EXP format is invalid")
+
+        try:
+            self.batch_size = int(os.environ.get("BATCH_UPLOAD_SIZE", 20))
+        except ValueError:
+            raise errors.ConfigError("BATCH_UPLOAD_SIZE must be a valid integer")
+
+        if self.batch_size <= 0:
+            raise errors.ConfigError("BATCH_UPLOAD_SIZE must be a positive integer")
 
         logging.basicConfig(stream=sys.stdout, level=logging.INFO)
         self.logger = logging.getLogger(__name__)
@@ -178,22 +187,126 @@ class FrontendPluginManager:
         self.logger.info("Successfully obtained JWT access token")
         return token
 
+    def _write_document_set(self, documents: list, vault_json: dict, vaultid: str,
+                            empty_content: dict, content_key: str, id_key: str) -> None:
+        """Append OSO documents built from one content section of a vault response."""
+        for item in vault_json.get(content_key, []):
+            try:
+                document_id = item.get(id_key)
+
+                if not document_id:
+                    self.logger.warning(
+                        "Missing %s in vault %s for %s",
+                        id_key,
+                        vaultid,
+                        content_key,
+                    )
+                    continue
+
+                self.logger.info(
+                    "Saving document %s from %s (vault %s)",
+                    document_id,
+                    content_key,
+                    vaultid,
+                )
+
+                content = copy.deepcopy(empty_content)
+                content.setdefault(content_key, []).append(item)
+
+                # Encrypt content if seed provided
+                if self.seed:
+                    for section in ["transactions", "manifests", "accounts"]:
+                        for section_item in content.get(section, []):
+                            if "signedPayload" in section_item:
+                                section_item["signedPayloadCiphered"] = crypt.encrypt(
+                                    section_item["signedPayload"],
+                                    self.seed,
+                                )
+                                del section_item["signedPayload"]
+
+                data = json.dumps(content)
+                meta = {"source": vaultid, "type": content_key}
+
+                documents.append(
+                    {
+                        "id": document_id,
+                        "content": data,
+                        "metadata": json.dumps(meta),
+                    }
+                )
+
+                self.logger.info(
+                    "Successfully saved document %s (vault %s)",
+                    document_id,
+                    vaultid,
+                )
+
+            except Exception:
+                self.logger.exception(
+                    "Failed processing document in vault %s (%s)",
+                    vaultid,
+                    content_key,
+                )
+                continue
+
     def bulk_download(self) -> list:
         self.logger.info("Performing bulk download from frontend")
         token = self.get_token()
-        documents = []
-        for vaultid in self.vaultids:
 
+        documents = []
+
+        for vaultid in self.vaultids:
             url = f"https://{self.hmz_api_hostname}/v1/vaults/{vaultid}/operations/prepared"
-            response = requests.get(
-                url=url,
-                headers={"Authorization": "Bearer " + token},
-                stream=True,
-                verify=self.verify,
-            )
-            response.raise_for_status()
-            vault_json = response.json()
-            self.logger.info(f"Bulk download finished successfully for vault {vaultid}")
+
+            try:
+                response = requests.get(
+                    url=url,
+                    headers={"Authorization": f"Bearer {token}"},
+                    verify=self.verify,
+                    timeout=30,
+                )
+            except requests.exceptions.RequestException as e:
+                self.logger.error(
+                    "Network error while downloading vault %s: %s",
+                    vaultid,
+                    str(e),
+                )
+                continue
+
+            status = response.status_code
+
+            # ---- Handle non-success HTTP codes ----
+            if not (200 <= status < 300):
+                self.logger.error(
+                    "Download rejected for vault %s: status=%s body=%s",
+                    vaultid,
+                    status,
+                    response.text[:2000],
+                )
+                continue
+
+            # ---- Handle 204 - empty response ----
+            if status == 204 or not response.content:
+                self.logger.info(
+                    "No content returned for vault %s (status=%s)",
+                    vaultid,
+                    status,
+                )
+                continue
+
+            # ---- Parse JSON safely ----
+            try:
+                vault_json = response.json()
+            except ValueError:
+                self.logger.error(
+                    "Invalid JSON for vault %s: %s",
+                    vaultid,
+                    response.text[:2000],
+                )
+                continue
+
+            self.logger.info("Bulk download finished successfully for vault %s", vaultid)
+
             empty_content = {
                 "vaultId": vaultid,
                 "accounts": [],
@@ -201,121 +314,144 @@ class FrontendPluginManager:
                 "manifests": [],
             }
 
-            def write_document_set(documents, content_key: str, id_key: str):
-                for item in vault_json.get(content_key, []):
-                    self.logger.info(
-                            f"Saving document from {content_key} for bulk download"
-                    )
-                    try:
-                        document_id = item.get(id_key)
-                        self.logger.info(f"Saving document {document_id} for bulk download")
-
-                        content = copy.deepcopy(empty_content)
-                        content.setdefault(content_key, []).append(item)
-
-                        # Encrypt content
-                        if self.seed:
-                            for section in ["transactions", "manifests", "accounts"]:
-                                for item in content.get(section, []):
-                                    if "signedPayload" in item:
-                                        item["signedPayloadCiphered"] = crypt.encrypt(item["signedPayload"], self.seed)
-                                        del item["signedPayload"]
-
-                        data = json.dumps(content)
-                        meta = { "source" : vaultid, "type": content_key}
-                        documents.append(
-                            {"id": document_id, "content": data, "metadata": json.dumps(meta) }
-                        )
-
-                        self.logger.info(
-                            f"Successfully saved document {document_id} for bulk download"
-                        )
-                    except Exception as e:
-                        self.logger.exception(e)
-                        continue
-
-
             for content_key, id_key in [
                 ("transactions", "transactionId"),
                 ("accounts", "accountId"),
                 ("manifests", "manifestId"),
             ]:
-                write_document_set(documents, content_key, id_key)
+                self._write_document_set(
+                    documents, vault_json, vaultid, empty_content, content_key, id_key
+                )
 
         return documents
 
     def bulk_upload(self, documents):
-        v_tx = {}
-        v_ac = {}
-        v_ma = {}
-        v_vaults = {}
+        BATCH_SIZE = self.batch_size
+
+        def send_batch(content):
+            self.logger.info(
+                "Performing bulk upload to harmonize (batch size=%s)",
+                len(content.get("transactions", []))
+                + len(content.get("accounts", []))
+                + len(content.get("manifests", [])),
+            )
+
+            try:
+                token = self.get_token()
+
+                json_bytes = json.dumps(content).encode("utf-8")
+                file_obj = io.BytesIO(json_bytes)
+
+                files = {
+                    "files": ("batch.json", file_obj, "application/json")
+                }
+
+                response = requests.post(
+                    url=f"https://{self.hmz_api_hostname}/v1/vaults/operations/signed",
+                    headers={
+                        "Authorization": f"Bearer {token}"
+                        # DO NOT set Content-Type manually
+                    },
+                    files=files,
+                    verify=self.verify,
+                    timeout=60,
+                )
+
+            except requests.exceptions.RequestException as e:
+                self.logger.error("Network error during bulk upload: %s", str(e))
+                raise
+
+            status = response.status_code
+
+            if not (200 <= status < 300):
+                self.logger.error(
+                    "Backend rejected batch: status=%s body=%s",
+                    status,
+                    response.text[:2000],  # prevent huge logs
+                )
+                response.raise_for_status()
+
+            self.logger.info("Batch upload successful (status=%s)", status)
+
+        # ---- Batch accumulators ----
+        vaults = []
+        transactions = []
+        accounts = []
+        manifests = []
+        doc_count = 0
 
         self.logger.info("Saving documents for bulk upload")
+
         for document in documents:
             try:
+                document_id = document.get("id")
+
+                if not document_id:
+                    self.logger.warning("Skipping document without id")
+                    continue
+
+                self.logger.info(
+                    "Processing document %s for bulk upload",
+                    document_id,
+                )
+
                 contents = json.loads(document["content"])
-                vaultid = contents.get("vaultId")
-                
-                if vaultid not in v_tx:
-                    v_tx[vaultid] = []
-                    v_ac[vaultid] = []
-                    v_ma[vaultid] = []
-                    v_vaults[vaultid] = []
-                
-                document_id = document["id"]
-                self.logger.info(f"Saving document {document_id} for bulk upload")
-                
-                # Decrypt content
+
+                # Decrypt if needed
                 if self.seed:
                     for section in ("transactions", "accounts", "manifests"):
                         for item in contents.get(section, []):
                             if "signedPayloadCiphered" in item:
-                                item["signedPayload"] = crypt.decrypt(item["signedPayloadCiphered"], self.seed)
+                                item["signedPayload"] = crypt.decrypt(
+                                    item["signedPayloadCiphered"],
+                                    self.seed,
+                                )
                                 del item["signedPayloadCiphered"]
-                
-                v_tx[vaultid].extend(contents.get("transactions", []))
-                v_ac[vaultid].extend(contents.get("accounts", []))
-                v_ma[vaultid].extend(contents.get("manifests", []))
-                v_vaults[vaultid].extend(contents.get("vaults", []))
-                
-                self.logger.info(f"Successfully saved document {document_id} for bulk upload")
-            except Exception as e:
-                self.logger.exception(e)
+
+                transactions.extend(contents.get("transactions", []))
+                accounts.extend(contents.get("accounts", []))
+                manifests.extend(contents.get("manifests", []))
+                vaults.extend(contents.get("vaults", []))
+
+                doc_count += 1
+
+                # Flush every BATCH_SIZE documents
+                if doc_count >= BATCH_SIZE:
+                    send_batch({
+                        "accounts": accounts,
+                        "transactions": transactions,
+                        "manifests": manifests,
+                        "vaults": vaults,
+                    })
+
+                    # Reset batch
+                    vaults = []
+                    transactions = []
+                    accounts = []
+                    manifests = []
+                    doc_count = 0
+
+                self.logger.info(
+                    "Successfully processed document %s",
+                    document_id,
+                )
+
+            except Exception:
+                self.logger.exception(
+                    "Failed processing document %s",
+                    document.get("id"),
+                )
                 continue
 
-        self.logger.info("Performing bulk upload to frontend")
-        token = self.get_token()
-        
-        # Upload each vault separately
-        for vaultid in v_tx.keys():
-            content = {
-                "vaultId": vaultid,
-                "accounts": v_ac[vaultid],
-                "transactions": v_tx[vaultid],
-                "manifests": v_ma[vaultid],
-                "vaults": v_vaults[vaultid],
-            }
-            
-            try:
-                with tempfile.NamedTemporaryFile(mode="w", delete=False) as vault_file:
-                    json.dump(content, vault_file)
+        # ---- Send remaining documents ----
+        if doc_count > 0:
+            send_batch({
+                "accounts": accounts,
+                "transactions": transactions,
+                "manifests": manifests,
+                "vaults": vaults,
+            })
 
-                files = {"files": open(vault_file.name, "rb")}
-                response = requests.post(
-                    url=f"https://{self.hmz_api_hostname}/v1/vaults/operations/signed",
-                    headers={"Authorization": "Bearer " + token},
-                    files=files,
-                    verify=self.verify,
-                )
-                response.raise_for_status()
-                self.logger.info(f"Successfully uploaded vault {vaultid}")
-            except requests.HTTPError as http_err:
-                self.logger.error(f"HTTP error uploading vault {vaultid}: {http_err} - {response.text}")
-            except Exception as err:
-                self.logger.error(f"Unexpected error uploading vault {vaultid}: {err}")
-            finally:
-                os.remove(vault_file.name)
-        
         self.logger.info("Bulk upload finished successfully")
 
     def backend_status(self):
