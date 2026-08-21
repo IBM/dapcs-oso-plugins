@@ -61,19 +61,9 @@ variable "KMSCONNECT_IMAGE" {
   description = "KMS connect image containing registry"
 }
 
-variable "VAULT_ID" {
-  type        = string
-  description = "Vault ID (single vault, use VAULTS for multi-vault)"
-  default     = ""
-}
-
-variable "VAULTS" {
-  type = list(object({
-    vault_id         = string
-    log_level        = optional(string, "")
-    vault_log_level  = optional(string, "")
-  }))
-  description = "List of KMS vault configurations (supports 1 to N vaults). Use instead of VAULT_ID for multi-vault setups."
+variable "VAULT_IDS" {
+  type        = list(string)
+  description = "List of vault IDs. Supports a single vault or multiple vaults."
   default     = []
 }
 
@@ -218,21 +208,3 @@ variable "CRYPTO_PASSTHROUGH_ENABLEMENT" {
   description = "Crypto passthrough enablement configuration"
 }
 
-variable "SSH_PUBKEY" {
-  type        = string
-  description = "SSH public key for debug access"
-  default     = ""
-}
-
-variable "SSH_PORT" {
-  type        = string
-  description = "SSH port for debug access"
-  default     = "5000"
-}
-
-variable "SSH_PASSWORD" {
-  type        = string
-  description = "SSH password for debug access (fallback when publickey auth fails). Only active when DEBUG=true."
-  default     = ""
-  sensitive   = true
-}

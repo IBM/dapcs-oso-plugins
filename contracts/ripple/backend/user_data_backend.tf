@@ -38,34 +38,24 @@ resource "local_file" "grep_client_cert" {
 }
 
 
-# Local variable to handle both single vault (VAULT_ID) and multi-vault (VAULTS) configurations
-# Normalizes all vault configurations to KMS-only platform with required runtime settings
 locals {
-  # If VAULT_ID is provided, create a single-vault list with default KMS values
-  # Otherwise, use the VAULTS list (which is already KMS-only)
-  resolved_vaults_raw = var.VAULT_ID != "" ? [
-    {
-      vault_id        = var.VAULT_ID
-      log_level       = ""
-      vault_log_level = ""
-    }
-  ] : var.VAULTS
-
-  # Inject grpc_port per vault (10001, 10002, 10003, ...) so the template
-  # can reference vault.grpc_port without inline arithmetic.
-  # KMS_URL is set to "0.0.0.0:<grpc_port>" on each vault container so that
-  # each vault instance binds its gRPC listener on a unique port within the
-  # shared pod network namespace. cold-bridge is told the matching endpoint
-  # via Vault__GrpcEndpoints__N. See: DAPCS-1965.
+  # Assign each vault a 1-based label (num) and a unique gRPC port (10001, 10002, ...).
   resolved_vaults = [
-    for i, v in local.resolved_vaults_raw : merge(v, { grpc_port = 10001 + i, platform = "kms" })
+    for i, vault_id in var.VAULT_IDS : { vault_id = vault_id, num = i + 1, grpc_port = 10001 + i, platform = "kms" }
   ]
+
+  # Render one ConfigMap per vault from supervisord.tftpl; injected at the top of backend.yml.
+  supervisord_configmaps = templatefile(
+    "${path.module}/supervisord.tftpl",
+    { tpl = { vaults = local.resolved_vaults } }
+  )
 }
 
 resource "local_file" "podman-play" {
   content = templatefile(
     "${path.module}/backend.yml.tftpl",
     { tpl = {
+      supervisord_configmaps = local.supervisord_configmaps,
       backend_plugin_image = var.BACKEND_PLUGIN_IMAGE,
       cold_bridge_image = var.COLD_BRIDGE_IMAGE,
       cold_vault_image = var.COLD_VAULT_IMAGE,
@@ -78,10 +68,6 @@ resource "local_file" "podman-play" {
       enable_ep11server = var.INTERNAL_GREP11,
       crypto_pass_enable = var.CRYPTO_PASSTHROUGH_ENABLEMENT,
       grep11_image = var.GREP11_IMAGE,
-      debug             = var.DEBUG ? "true" : "false",
-      ssh_pubkey        = var.SSH_PUBKEY,
-      ssh_port          = var.SSH_PORT,
-      ssh_password      = var.SSH_PASSWORD,
     } },
   )
   filename = "podman-play/play.yml"
@@ -110,7 +96,7 @@ resource "null_resource" "crypto_deps" {
 }
 
 # archive of the folder containing the podman-play pod YAML and supporting files (ibm.cfg, certs, etc.)
-# All of these files get bundled into a tgz (base64 encoded) for the HPCR workload contract.
+# All files get bundled into a tgz (base64 encoded).
 resource "hpcr_tgz" "workload" {
   depends_on = [local_file.podman-play]
   folder = "podman-play"

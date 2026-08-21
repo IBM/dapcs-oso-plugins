@@ -31,14 +31,39 @@ variable "FRONTEND_PLUGIN_IMAGE" {
   description = "Frontend plugin image name"
 }
 
+variable "SEED" {
+  type      = string
+  description = "Encrypt data through the iteration pipeline (should be same value as backend plugin)"
+  default   = ""
+  sensitive = true
+}
+
+# Ripple
+variable "SK" {
+  type = string
+  description = "Private (secret) key of a registered user used to login to Ripple"
+}
+
 variable "VAULT_IDS" {
   type        = list(string)
   description = "List of Ripple vault IDs (supports 1 to N vaults)"
 }
 
 variable "HMZ_AUTH_HOSTNAME" {
-  type = string
+  type        = string
   description = "Ripple auth hostname containing no protocol or path"
+}
+
+variable "HMZ_AUTH_PATH" {
+  type        = string
+  description = "Ripple auth token path appended to HMZ_AUTH_HOSTNAME (e.g. /token). May be empty if path is already embedded in HMZ_AUTH_HOSTNAME."
+  default     = ""
+}
+
+variable "HMZ_AUTH_CUSTOMERID" {
+  type        = string
+  description = "Ripple auth customer ID (client_id) used in token requests. Set by customer for Harmonize-on-Kubernetes; Ripple SaaS typically uses 'customer_api'."
+  default     = ""
 }
 
 variable "HMZ_API_HOSTNAME" {
@@ -58,25 +83,13 @@ variable "TOKEN_EXP" {
   default = "4h0m0s"
 }
 
-variable "SEED" {
-  type      = string
-  description = "Encrypt data through the iteration pipeline (should be same value as backend plugin)"
-  default   = ""
-  sensitive = true
+variable "BATCH_UPLOAD_SIZE" {
+  type        = number
+  description = "Number of documents per batch during bulk upload"
+  default     = 20
+
+  validation {
+    condition     = var.BATCH_UPLOAD_SIZE > 0
+    error_message = "BATCH_UPLOAD_SIZE must be a positive integer."
+  }
 }
-
-variable "SK" {
-  type = string
-  description = "Private (secret) key of a registered user used to login to Ripple"
-}
-
-#variable "HMZ_AUTH_PATH" {
-#  type = string
-#  description = "Harmonize path to get auth token"
-#}
-
-#variable "HMZ_AUTH_CUSTOMERID" {
-#  type = string
-#  description = "Harmonize customer id used to authenticate"
-#  default = "customer_api"
-#}
