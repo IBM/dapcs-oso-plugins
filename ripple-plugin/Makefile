@@ -16,8 +16,6 @@
 
 .PHONY : build debug test
 
-SSH_PASSWORD ?=
-
 REGISTRY ?= us.icr.io
 NAMESPACE ?= dap-osc-dev
 TAG ?= latest
@@ -62,18 +60,6 @@ build :
 	docker build \
 		. --target release -t oso-ripple-plugins:latest -t $(REGISTRY)/$(NAMESPACE)/oso-ripple-plugins:$(TAG) -f Dockerfile --platform linux/s390x --provenance=false
 
-debug :
-	@if [ -z "$(SSH_PASSWORD)" ]; then \
-		echo "ERROR: SSH_PASSWORD is required for debug build. Use: make debug SSH_PASSWORD=<password>"; \
-		exit 1; \
-	fi
-	@printf '%s' "$(SSH_PASSWORD)" > /tmp/.ssh_password_secret
-	docker build \
-		--secret id=ssh_password,src=/tmp/.ssh_password_secret \
-		--label debug=true \
-		. --target release -t oso-ripple-plugins:latest -t $(REGISTRY)/$(NAMESPACE)/oso-ripple-plugins:$(TAG) -f Dockerfile --platform linux/s390x --provenance=false
-	@rm -f /tmp/.ssh_password_secret
-
 ifdef RIPPLE_PLUGINS_TEST_RESULTS
 VOL_OPTS ::= -v $(RIPPLE_PLUGINS_TEST_RESULTS):/tests/results:rw,z
 endif
@@ -90,4 +76,3 @@ test: test-build
 		--platform linux/s390x \
 		--entrypoint pytest \
 		$(REGISTRY)/$(NAMESPACE)/oso-ripple-plugins-test:$(TAG)
-
