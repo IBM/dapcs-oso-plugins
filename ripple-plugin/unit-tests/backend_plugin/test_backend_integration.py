@@ -99,11 +99,15 @@ def test_encrypted_download(seed, client):
             mock_url,
             json={
                 "accounts": [
-                    {"accountId": "account_test1"},
-                    {"accountId": "account_test2"},
+                    {"accountId": "account_test1", "signedPayload": "account_test1_signed"},
+                    {"accountId": "account_test2", "signedPayload": "account_test2_signed"},
                 ],
-                "transactions": [{"transactionId": "transaction_test"}],
-                "manifests": [{"manifestId": "manifest_test"}],
+                "transactions": [
+                    {"transactionId": "transaction_test", "signedPayload": "transaction_test_signed"}
+                ],
+                "manifests": [
+                    {"manifestId": "manifest_test", "signedPayload": "manifest_test_signed"}
+                ],
                 "vaults": [{"vaultId": "vault_test"}],
             },
             status_code=200,
@@ -117,32 +121,30 @@ def test_encrypted_download(seed, client):
             },
         )
 
-    assert response.json["documents"][0]["id"] == "transaction_test"
-    assert crypt.decrypt(response.json["documents"][0]["content"], seed) == (
-        '{"accounts": [], "transactions": [{"transactionId":'
-        ' "transaction_test"}], "manifests": [], "vaults": []}'
-    )
-    assert response.json["documents"][0]["metadata"] == ""
-    assert response.json["documents"][1]["id"] == "account_test1"
-    assert crypt.decrypt(response.json["documents"][1]["content"], seed) == (
-        '{"accounts": [{"accountId": "account_test1"}], "transactions": [],'
-        ' "manifests": [], "vaults": []}'
-    )
-    assert response.json["documents"][1]["metadata"] == ""
-    assert response.json["documents"][2]["id"] == "account_test2"
-    assert crypt.decrypt(response.json["documents"][2]["content"], seed) == (
-        '{"accounts": [{"accountId": "account_test2"}], "transactions": [],'
-        ' "manifests": [], "vaults": []}'
-    )
-    assert response.json["documents"][2]["metadata"] == ""
-    assert response.json["documents"][3]["id"] == "manifest_test"
-    assert crypt.decrypt(response.json["documents"][3]["content"], seed) == (
-        '{"accounts": [], "transactions": [], "manifests": [{"manifestId":'
-        ' "manifest_test"}], "vaults": []}'
-    )
-    assert response.json["documents"][3]["metadata"] == ""
-    assert response.json["count"] == 4
     assert response.status_code == 200
+    assert response.json["count"] == 4
+
+    # bulk_download encrypts only signedPayload fields inside the JSON;
+    # the outer content is still valid JSON — only the ciphered field needs decrypting.
+    doc0 = json.loads(response.json["documents"][0]["content"])
+    assert response.json["documents"][0]["id"] == "transaction_test"
+    assert crypt.decrypt(doc0["transactions"][0]["signedPayloadCiphered"], seed) == "transaction_test_signed"
+    assert response.json["documents"][0]["metadata"] == ""
+
+    doc1 = json.loads(response.json["documents"][1]["content"])
+    assert response.json["documents"][1]["id"] == "account_test1"
+    assert crypt.decrypt(doc1["accounts"][0]["signedPayloadCiphered"], seed) == "account_test1_signed"
+    assert response.json["documents"][1]["metadata"] == ""
+
+    doc2 = json.loads(response.json["documents"][2]["content"])
+    assert response.json["documents"][2]["id"] == "account_test2"
+    assert crypt.decrypt(doc2["accounts"][0]["signedPayloadCiphered"], seed) == "account_test2_signed"
+    assert response.json["documents"][2]["metadata"] == ""
+
+    doc3 = json.loads(response.json["documents"][3]["content"])
+    assert response.json["documents"][3]["id"] == "manifest_test"
+    assert crypt.decrypt(doc3["manifests"][0]["signedPayloadCiphered"], seed) == "manifest_test_signed"
+    assert response.json["documents"][3]["metadata"] == ""
 
 
 def test_empty_download(client):
@@ -172,22 +174,22 @@ def test_docs_upload(client):
         "documents": [
             {
                 "id": "test_id",
-                "content": """{
+                "content": json.dumps({
                     "vaultId": "test_vault_id",
                     "accounts": [
                         {"accountId": "account_test1", "signedPayload": "account_test1_signed"},
-                        {"accountId": "account_test2", "signedPayload": "account_test2_signed"}
+                        {"accountId": "account_test2", "signedPayload": "account_test2_signed"},
                     ],
                     "transactions": [
-                        { "transactionId": "transaction_test", "signedPayload": "transaction_test_signed"}
+                        {"transactionId": "transaction_test", "signedPayload": "transaction_test_signed"},
                     ],
                     "manifests": [
-                        {"manifestId": "manifest_test", "signedPayload": "manifest_test_signed"}
+                        {"manifestId": "manifest_test", "signedPayload": "manifest_test_signed"},
                     ],
                     "vaults": [
-                        {"vaultId": "vault_test", "signedPayload": "vault_test_signed"}
-                    ]
-                }""",
+                        {"vaultId": "vault_test", "signedPayload": "vault_test_signed"},
+                    ],
+                }),
                 "signature": "",
                 "metadata": None,
             }
@@ -266,28 +268,43 @@ def test_empty_upload(client):
 
 @pytest.mark.parametrize("seed", ["passphrase"], indirect=True)
 def test_encrypted_upload(seed, client):
-    payload = {"documents": [{"id": "test_id", "signature": "", "metadata": None}]}
-
-    payload["documents"][0]["content"] = crypt.encrypt(
-        """
-    {
-        "vaultId": "test_vault_id",
-        "accounts": [
-            {"accountId": "account_test1", "signedPayload": "account_test1_signed"},
-            {"accountId": "account_test2", "signedPayload": "account_test2_signed"}
-        ],
-        "transactions": [
-            {"transactionId": "transaction_test", "signedPayload": "transaction_test_signed"}
-        ],
-        "manifests": [
-            {"manifestId": "manifest_test", "signedPayload": "manifest_test_signed"}
-        ],
-        "vaults": [
-            {"vaultId": "vault_test", "signedPayload": "vault_test_signed"}
+    # Content mirrors what bulk_download produces when SEED is set:
+    # the outer JSON structure is plain, only signedPayload fields are ciphered.
+    payload = {
+        "documents": [
+            {
+                "id": "test_id",
+                "signature": "",
+                "metadata": None,
+                "content": json.dumps({
+                    "vaultId": "test_vault_id",
+                    "accounts": [
+                        {
+                            "accountId": "account_test1",
+                            "signedPayloadCiphered": crypt.encrypt("account_test1_signed", seed),
+                        },
+                        {
+                            "accountId": "account_test2",
+                            "signedPayloadCiphered": crypt.encrypt("account_test2_signed", seed),
+                        },
+                    ],
+                    "transactions": [
+                        {
+                            "transactionId": "transaction_test",
+                            "signedPayloadCiphered": crypt.encrypt("transaction_test_signed", seed),
+                        },
+                    ],
+                    "manifests": [
+                        {
+                            "manifestId": "manifest_test",
+                            "signedPayloadCiphered": crypt.encrypt("manifest_test_signed", seed),
+                        },
+                    ],
+                    "vaults": [],
+                }),
+            }
         ]
-    }""",
-        seed,
-    )
+    }
 
     mock_url = "https://backend/v1/feed/upload"
 

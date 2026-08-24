@@ -33,9 +33,13 @@ filenames = [str(uuid.uuid4()) for _ in range(5)]
 
 
 @pytest.fixture(scope="function")
-def seed(request, monkeypatch):
-    monkeypatch.setenv("SEED", request.param)
+def seed(request, app):
+    # Patch the already-created manager directly — BackendPluginManager reads
+    # OSOENCRYPTIONPASS once at __init__ time (before the seed fixture runs),
+    # so setting the env var is not enough.
+    app.bpm.seed = request.param
     yield request.param
+    app.bpm.seed = ""
 
 
 @pytest.fixture
@@ -47,10 +51,9 @@ def set_env():
 @pytest.fixture
 def app(set_env, tmpdir, mocker):
     config = BaseConfig()
-    # config.TESTING = True
 
-    config.PREPARED_DIR = tmpdir + "/app-root/data/frontend_plugin/prepared"
-    config.SIGNED_DIR = tmpdir + "/app-root/data/frontend_plugin/signed"
+    config.PREPARED_DIR = tmpdir + "/app-root/data/backend_plugin/prepared"
+    config.SIGNED_DIR = tmpdir + "/app-root/data/backend_plugin/signed"
 
     app = create_app(config=config)
     with app.app_context():
