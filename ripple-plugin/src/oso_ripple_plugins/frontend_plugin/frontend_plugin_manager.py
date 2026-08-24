@@ -53,14 +53,6 @@ class FrontendPluginManager:
             raise errors.ConfigError("HMZ_AUTH_HOSTNAME not found")
         self.hmz_auth_hostname = os.environ["HMZ_AUTH_HOSTNAME"]
 
-        if "HMZ_AUTH_PATH" not in os.environ:
-            raise errors.ConfigError("HMZ_AUTH_PATH not found")
-        self.hmz_auth_path = os.environ["HMZ_AUTH_PATH"]
-
-        if "HMZ_AUTH_CUSTOMERID" not in os.environ:
-            raise errors.ConfigError("HMZ_AUTH_CUSTOMERID not found")
-        self.hmz_auth_customerid = os.environ["HMZ_AUTH_CUSTOMERID"]
-
         if "HMZ_API_HOSTNAME" not in os.environ:
             raise errors.ConfigError("HMZ_API_HOSTNAME not found")
         self.hmz_api_hostname = os.environ["HMZ_API_HOSTNAME"]
@@ -144,7 +136,7 @@ class FrontendPluginManager:
         challenge = str(uuid.uuid4())
         signature = self._sign(challenge)
         data = {
-            "client_id": self.hmz_auth_customerid,
+            "client_id": "customer_api",
             "grant_type": "password",
             "challenge": challenge,
             "public_key": self.public_key,
@@ -152,7 +144,7 @@ class FrontendPluginManager:
         }
 
         response = requests.post(
-            f"https://{self.hmz_auth_hostname}{self.hmz_auth_path}",
+            f"https://{self.hmz_auth_hostname}/token",
             data=data,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             verify=self.verify,
