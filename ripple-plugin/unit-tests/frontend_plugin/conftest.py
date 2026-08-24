@@ -33,8 +33,9 @@ base_env = {
     "APPROVER_FINGERPRINTS": approver_fingerprints,
     "COMPONENT_FINGERPRINTS": component_fingerprints,
     "FRONTEND_ENDPOINT": "https://frontend",
-    "HMZ_AUTH_HOSTNAME": "HMZ_AUTH_HOSTNAME",
-    "HMZ_API_HOSTNAME": "HMZ_API_HOSTNAME",
+    # lowercase so tests can mock https://hmz_auth_hostname/token exactly
+    "HMZ_AUTH_HOSTNAME": "hmz_auth_hostname",
+    "HMZ_API_HOSTNAME": "hmz_api_hostname",
     "VAULTID": "vault_id",
     "TOKEN_EXP": "4h0m0s",
 }
@@ -63,6 +64,12 @@ def rootcert(request, monkeypatch):
 @pytest.fixture(scope="function")
 def seed(request, monkeypatch):
     monkeypatch.setenv("SEED", request.param)
+    yield request.param
+
+
+@pytest.fixture(scope="function")
+def batch_upload_size(request, monkeypatch):
+    monkeypatch.setenv("BATCH_UPLOAD_SIZE", str(request.param))
     yield request.param
 
 

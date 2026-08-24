@@ -75,12 +75,11 @@ class BackendPluginManager:
                     "manifests": [item] if section == "manifests" else [],
                     "vaults": [],
                 }
-                meta = {"source": item["vaultId"], "type": type_name}
 
                 documents.append({
                     "id": item[id_key],
                     "content": json.dumps(content),
-                    "metadata": json.dumps(meta)
+                    "metadata": "",
                 })
 
         return documents

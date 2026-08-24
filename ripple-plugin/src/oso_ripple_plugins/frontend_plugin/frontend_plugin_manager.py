@@ -217,13 +217,12 @@ class FrontendPluginManager:
                                 del section_item["signedPayload"]
 
                 data = json.dumps(content)
-                meta = {"source": vaultid, "type": content_key}
 
                 documents.append(
                     {
                         "id": document_id,
                         "content": data,
-                        "metadata": json.dumps(meta),
+                        "metadata": "",
                     }
                 )
 
@@ -300,7 +299,7 @@ class FrontendPluginManager:
             self.logger.info("Bulk download finished successfully for vault %s", vaultid)
 
             empty_content = {
-                "vaultId": vaultid,
+                "vaultId": vault_json.get("vaultId", vaultid),
                 "accounts": [],
                 "transactions": [],
                 "manifests": [],
@@ -409,19 +408,22 @@ class FrontendPluginManager:
 
                 # Flush every BATCH_SIZE documents
                 if doc_count >= BATCH_SIZE:
-                    send_batch({
-                        "accounts": accounts,
-                        "transactions": transactions,
-                        "manifests": manifests,
-                        "vaults": vaults,
-                    })
-
-                    # Reset batch
-                    vaults = []
-                    transactions = []
-                    accounts = []
-                    manifests = []
-                    doc_count = 0
+                    try:
+                        send_batch({
+                            "accounts": accounts,
+                            "transactions": transactions,
+                            "manifests": manifests,
+                            "vaults": vaults,
+                        })
+                    except Exception:
+                        self.logger.exception("Batch flush failed; continuing")
+                    finally:
+                        # Always reset accumulators so later batches are not polluted
+                        vaults = []
+                        transactions = []
+                        accounts = []
+                        manifests = []
+                        doc_count = 0
 
                 self.logger.info(
                     "Successfully processed document %s",
