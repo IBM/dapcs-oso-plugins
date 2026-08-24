@@ -1,11 +1,18 @@
 # Container Configuration
 FRONTEND_PLUGIN_IMAGE="registry.control12.dap.local/oso/oso-ripple-plugins@sha256:"
 
-# Ripple
-HMZ_AUTH_HOSTNAME=""
-HMZ_API_HOSTNAME=""
-VAULT_ID=""
-SK=""
-
 # Frontend Plugin Configuration
 BATCH_UPLOAD_SIZE=20
+
+# Ripple
+HMZ_AUTH_HOSTNAME = "openid.ibm.77z12s.m3t4c0.services/realms/Metaco/protocol/openid-connect"
+HMZ_API_HOSTNAME  = "api.ibm.77z12s.m3t4c0.services"
+
+# Vault IDs — list of one or more Ripple vault UUIDs
+VAULT_IDS = [
+    "<vault-uuid-1>",
+    ....
+    ....
+    ....
+]
+SK=""
