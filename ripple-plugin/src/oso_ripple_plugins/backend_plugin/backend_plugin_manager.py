@@ -26,20 +26,23 @@ import requests
 import urllib3
 from urllib3.exceptions import InsecureRequestWarning
 
-from oso_ripple_plugins.common import crypt, errors
+from oso_ripple_plugins.common import crypt
 
 urllib3.disable_warnings(InsecureRequestWarning)
 
 
 class BackendPluginManager:
     def __init__(self):
-        self.cold_bridge_endpoint = os.environ.get("COLD_BRIDGE_ENDPOINT", 
-                "http://localhost:8080")
+        self.cold_bridge_endpoint = os.environ.get(
+            "COLD_BRIDGE_ENDPOINT", "http://localhost:8080"
+        )
         self.seed = os.environ.get("SEED", "")
 
         logging.basicConfig(stream=sys.stdout, level=logging.INFO)
         self.logger = logging.getLogger(__name__)
-        self.logger.info(f"Cold-bridge endpoint configured as: {self.cold_bridge_endpoint}")
+        self.logger.info(
+            f"Cold-bridge endpoint configured as: {self.cold_bridge_endpoint}"
+        )
 
     def backend_status(self):
         response = requests.get(
@@ -49,7 +52,9 @@ class BackendPluginManager:
         response.raise_for_status()
 
     def bulk_download(self) -> List[Dict]:
-        response = requests.get(f"{self.cold_bridge_endpoint}/v1/feed/download?clean=True")
+        response = requests.get(
+            f"{self.cold_bridge_endpoint}/v1/feed/download?clean=True"
+        )
         response.raise_for_status()
         response_json = response.json()
 
@@ -135,7 +140,7 @@ class BackendPluginManager:
                 continue
 
         if not vault_id:
-            return Exception("Could not get vault id")
+            raise Exception("Could not get vault id")
 
         content = {
             "vaultId": vault_id,
@@ -146,19 +151,30 @@ class BackendPluginManager:
 
         self.logger.info("Performing bulk upload to backend")
 
+        vault_file_path = None
         try:
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as vault_file:
                 json.dump(content, vault_file)
+                vault_file_path = vault_file.name
 
-            files = {"files": (vault_id, open(vault_file.name, "rb"))}
-            response = requests.post(
-                url=f"{self.cold_bridge_endpoint}/v1/feed/upload",
-                files=files,
-            )
+            with open(vault_file_path, "rb") as f:
+                response = requests.post(
+                    url=f"{self.cold_bridge_endpoint}/v1/feed/upload",
+                    files={"files": (vault_id, f)},
+                )
             response.raise_for_status()
+        except requests.HTTPError:
+            self.logger.error(
+                "HTTP error uploading to backend: %s - %s",
+                response.status_code,
+                response.text,
+            )
+            raise
         except Exception as e:
-            raise e
+            self.logger.error("Unexpected error during upload: %s", e)
+            raise
         finally:
-            os.remove(vault_file.name)
+            if vault_file_path:
+                os.remove(vault_file_path)
 
         self.logger.info("Bulk upload finished successfully")
