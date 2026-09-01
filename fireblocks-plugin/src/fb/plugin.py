@@ -27,7 +27,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from werkzeug.exceptions import NotFound
 
-from oso.framework.data.types import V1_3
+from oso.framework.data.types import V1_3, V1_5
 from oso.framework.plugin.base import PluginProtocol
 from oso.framework.plugin import current_oso_plugin, current_oso_plugin_app
 from oso.framework.plugin.addons.signing_server import SigningServerAddon, KeyType
@@ -223,22 +223,20 @@ class FBPlugin(PluginProtocol):
 
         return messages_status_response
 
-    def to_oso(self) -> V1_3.DocumentList:
+    def to_oso(self) -> V1_5.DocumentList:
         logger.debug("Entering to_oso()")
 
-        docs: list[V1_3.Document] = []
+        docs: list[V1_5.Document] = []
 
         match self.mode:
             case "frontend":
                 logger.debug(f"to_oso: {self.pending_messages=}")
 
                 for message in self.pending_messages:
-                    document = V1_3.Document(
+                    document = V1_5.Document(
                         id=str(message.transportMetadata.requestId),
                         content=model_dump_json(message),
-                        metadata="",
                     )
-
                     docs.append(document)
 
                 self.pending_messages.clear()
@@ -247,21 +245,23 @@ class FBPlugin(PluginProtocol):
                 logger.debug(f"to_oso: {self.signed_statuses=}")
 
                 for message_status in self.signed_statuses:
-                    document = V1_3.Document(
+                    document = V1_5.Document(
                         id=str(message_status.requestId),
                         content=model_dump_json(message_status),
-                        metadata="",
                     )
-
                     docs.append(document)
 
                 self.signed_statuses.clear()
 
         logger.debug(f"to_oso() returning: {docs=}")
+        return V1_5.DocumentList(documents=docs, count=len(docs))
 
-        return V1_3.DocumentList(documents=docs, count=len(docs))
+    def to_isv(self, oso: V1_5.DocumentList) -> list[str]:
+        """Convert OSO document list to ISV format.
 
-    def to_isv(self, oso: V1_3.DocumentList) -> list[str]:
+        The framework strips mk_rotation / mk_rotation_done documents before
+        this method is called, so the plugin only sees normal signing documents.
+        """
         logger.debug(f"entering to_isv: {oso=}")
 
         match self.mode:
@@ -269,12 +269,10 @@ class FBPlugin(PluginProtocol):
                 for doc in oso.documents:
                     try:
                         message_status = MessageStatus.model_validate_json(doc.content)
-
                     except Exception as e:
-                        logger.error("ERROR: could not validate message")
+                        logger.error("ERROR: could not validate message status")
                         logger.debug(f"Invalid doc: {doc=}, Error {e}")
                         continue
-
                     self.signed_statuses.append(message_status)
 
             case "backend":
@@ -283,22 +281,56 @@ class FBPlugin(PluginProtocol):
                         message_envelope = MessageEnvelope.model_validate_json(
                             doc.content
                         )
-
                     except Exception as e:
-                        logger.error("ERROR: could not validate message")
+                        logger.error("ERROR: could not validate message envelope")
                         logger.debug(f"Invalid doc: {doc=}, Error {e}")
                         continue
 
                     message_status = self.sign(message_envelope)
-
                     logger.debug(
                         "Appending signed message status:"
                         f" {model_dump_json(message_status)}"
                     )
-
                     self.signed_statuses.append(message_status)
 
         return ["OK"]
+
+    def rewrap(self, rotation_id: str) -> V1_5.MkRotationDoneMetadata:
+        """ISV post-rewrap hook (optional).
+
+        The framework already drove :meth:`~SigningServerAddon.rewrap_keys`
+        before calling this method.  Use this hook for any Fireblocks-specific
+        actions that must follow a master-key rotation, for example publishing
+        new public key PEMs to the Fireblocks console.
+
+        Parameters
+        ----------
+        rotation_id : str
+            Rotation event ID echoed from the framework.
+
+        Returns
+        -------
+        V1_5.MkRotationDoneMetadata
+            The framework merges any additional ``rewrapped_key_ids`` returned
+            here with those it already collected from the SigningServer addon.
+        """
+        logger.info(
+            f"FBPlugin.rewrap() hook called rotation_id={rotation_id}. "
+            "Add Fireblocks-specific post-rewrap actions here."
+        )
+        # Example: publish new public keys to Fireblocks API.
+        # new_pub_keys = {
+        #     key_id: self.signing_server.get_key_pem(key_id)
+        #     for key_type in KeyType
+        #     for key_id in self.signing_server.list_keys(key_type)
+        # }
+        # self._publish_keys_to_fireblocks(new_pub_keys)
+
+        # Return an empty done doc; the framework already collected the IDs.
+        return V1_5.MkRotationDoneMetadata(
+            rotation_id=rotation_id,
+            rewrapped_key_ids=[],
+        )
 
     def status(self) -> V1_3.ComponentStatus:
         if self.mode == "frontend":
