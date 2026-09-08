@@ -43,12 +43,7 @@ BACKEND_WORKLOADS=[
     name: "backend-plugin",
     hipersocket34: false,
     workload: "$BACKEND",
-    persistent_vol: {
-      volume_name = "vault_vol",
-      env_seed = "vaultseed2",
-      prev_seed = "",
-      volume_path = "/var/lib/libvirt/images/oso/vault-data.qcow2"
-    }
+    persistent_vol: null
   }
 ]
 EOT
