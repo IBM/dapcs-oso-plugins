@@ -25,7 +25,7 @@ from oso_ripple_plugins.common import crypt
 
 
 def test_docs_download(client):
-    mock_url = "https://backend/v1/feed/download?clean=True"
+    mock_url = "https://backend/v1/feed/download?clean=true"
 
     with requests_mock.mock() as m:
         m.get(
@@ -92,7 +92,7 @@ def test_docs_download(client):
 
 @pytest.mark.parametrize("seed", ["passphrase"], indirect=True)
 def test_encrypted_download(seed, client):
-    mock_url = "https://backend/v1/feed/download?clean=True"
+    mock_url = "https://backend/v1/feed/download?clean=true"
 
     with requests_mock.mock() as m:
         m.get(
@@ -148,7 +148,7 @@ def test_encrypted_download(seed, client):
 
 
 def test_empty_download(client):
-    mock_url = "https://backend/v1/feed/download?clean=True"
+    mock_url = "https://backend/v1/feed/download?clean=true"
 
     with requests_mock.mock() as m:
         m.get(
