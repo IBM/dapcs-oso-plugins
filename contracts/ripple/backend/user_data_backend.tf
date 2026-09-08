@@ -41,7 +41,14 @@ resource "local_file" "grep_client_cert" {
 locals {
   # Assign each vault a 1-based label (num) and a unique gRPC port (10001, 10002, ...).
   resolved_vaults = [
-    for i, vault_id in var.VAULT_IDS : { vault_id = vault_id, num = i + 1, grpc_port = 10001 + i, platform = "kms" }
+    for i, vault_id in var.VAULT_IDS : {
+      vault_id        = vault_id
+      num             = i + 1
+      grpc_port       = 10001 + i
+      bridge_port      = 9123 + i
+      bridge_host_port = 9100 + i
+      platform        = "kms"
+    }
   ]
 
   # Render one ConfigMap per vault from supervisord.tftpl; injected at the top of backend.yml.
@@ -63,7 +70,6 @@ resource "local_file" "podman-play" {
       vaults = local.resolved_vaults,
       passphrase = var.PASSPHRASE,
       notary_messaging_public_key = var.NOTARY_MESSAGING_PUBLIC_KEY,
-      cold_bridge_endpoint = var.COLD_BRIDGE_ENDPOINT,
       seed = var.OSOENCRYPTIONPASS,
       enable_ep11server = var.INTERNAL_GREP11,
       crypto_pass_enable = var.CRYPTO_PASSTHROUGH_ENABLEMENT,

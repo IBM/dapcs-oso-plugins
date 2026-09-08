@@ -23,7 +23,8 @@ from oso_ripple_plugins.backend_plugin.flask_util.app import create_app
 from oso_ripple_plugins.backend_plugin.flask_util.config import BaseConfig
 
 env = {
-    "COLD_BRIDGE_ENDPOINT": "https://backend",
+    "Vault__Ids__0": "test_vault_id",
+    "COLD_BRIDGE_ENDPOINT__0": "https://backend",
     "APPROVER_FINGERPRINTS": approver_fingerprints,
     "COMPONENT_FINGERPRINTS": component_fingerprints,
 }

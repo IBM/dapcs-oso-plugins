@@ -32,56 +32,73 @@ urllib3.disable_warnings(InsecureRequestWarning)
 
 class BackendPluginManager:
     def __init__(self):
-        self.cold_bridge_endpoint = os.environ.get("COLD_BRIDGE_ENDPOINT", 
-                "http://localhost:8080")
+        # Build vault_id -> bridge endpoint map from indexed env vars:
+        # Vault__Ids__0, Vault__Ids__1, ... and COLD_BRIDGE_ENDPOINT__0, COLD_BRIDGE_ENDPOINT__1, ...
+        self.vault_bridge_map = {}
+        i = 0
+        while True:
+            vault_id = os.environ.get(f"Vault__Ids__{i}")
+            endpoint = os.environ.get(f"COLD_BRIDGE_ENDPOINT__{i}")
+            if vault_id is None or endpoint is None:
+                break
+            self.vault_bridge_map[vault_id] = endpoint
+            i += 1
+
         self.seed = os.environ.get("OSOENCRYPTIONPASS", "")
 
         logging.basicConfig(stream=sys.stdout, level=logging.INFO)
         self.logger = logging.getLogger(__name__)
-        self.logger.info(f"Cold-bridge endpoint configured as: {self.cold_bridge_endpoint}")
+        self.logger.info(f"Cold-bridge endpoints configured: {self.vault_bridge_map}")
 
     def backend_status(self):
-        response = requests.get(
-            f"{self.cold_bridge_endpoint}/v1/feed/status",
-            timeout=3,
-        )
-        response.raise_for_status()
+        # Check status on all bridge endpoints
+        status_errors = []
+        for vault_id, endpoint in self.vault_bridge_map.items():
+            try:
+                response = requests.get(f"{endpoint}/v1/feed/status", timeout=3)
+                response.raise_for_status()
+            except Exception as e:
+                status_errors.append(f"Bridge for vault {vault_id} ({endpoint}): {e}")
+        if status_errors:
+            raise Exception("; ".join(status_errors))
 
     def bulk_download(self) -> List[Dict]:
-        response = requests.get(f"{self.cold_bridge_endpoint}/v1/feed/download?clean=True")
-        response.raise_for_status()
-        response_json = response.json()
-
-        self.logger.info("Bulk download finished successfully")
-
         documents = []
-
         sections = [
             ("transactions", "transactionId", "transaction"),
             ("accounts", "accountId", "account"),
             ("manifests", "manifestId", "manifest"),
         ]
-        for section, id_key, type_name in sections:
-            for item in response_json.get(section, []):
-                # Encrypt if seed is set
-                if self.seed and "signedPayload" in item:
-                    item["signedPayloadCiphered"] = crypt.encrypt(item["signedPayload"], self.seed)
-                    del item["signedPayload"]
 
-                # Build content and metadata
-                content = {
-                    "accounts": [item] if section == "accounts" else [],
-                    "transactions": [item] if section == "transactions" else [],
-                    "manifests": [item] if section == "manifests" else [],
-                    "vaults": [],
-                }
+        # Download from all bridge endpoints and merge results
+        for vault_id, endpoint in self.vault_bridge_map.items():
+            response = requests.get(f"{endpoint}/v1/feed/download?clean=true")
+            response.raise_for_status()
+            response_json = response.json()
+            self.logger.info(f"Bulk download from bridge {endpoint} finished successfully")
 
-                documents.append({
-                    "id": item[id_key],
-                    "content": json.dumps(content),
-                    "metadata": "",
-                })
+            for section, id_key, type_name in sections:
+                for item in response_json.get(section, []):
+                    # Encrypt if seed is set
+                    if self.seed and "signedPayload" in item:
+                        item["signedPayloadCiphered"] = crypt.encrypt(item["signedPayload"], self.seed)
+                        del item["signedPayload"]
 
+                    # Build content and metadata
+                    content = {
+                        "accounts": [item] if section == "accounts" else [],
+                        "transactions": [item] if section == "transactions" else [],
+                        "manifests": [item] if section == "manifests" else [],
+                        "vaults": [],
+                    }
+
+                    documents.append({
+                        "id": item[id_key],
+                        "content": json.dumps(content),
+                        "metadata": "",
+                    })
+
+        self.logger.info("Bulk download finished successfully")
         return documents
 
     def bulk_upload(self, documents):
@@ -121,6 +138,12 @@ class BackendPluginManager:
 
         self.logger.info("Performing bulk upload to backend")
         for vaultid in v_tx.keys():
+            # Route upload to the bridge that owns this vault
+            endpoint = self.vault_bridge_map.get(vaultid)
+            if not endpoint:
+                self.logger.error(f"No bridge endpoint found for vault {vaultid}, skipping")
+                continue
+
             content = {
                 "vaultId": vaultid,
                 "accounts": v_ac[vaultid],
@@ -135,7 +158,7 @@ class BackendPluginManager:
 
                 files = {"files": (vaultid, open(vault_file.name, "rb"))}
                 response = requests.post(
-                    url=f"{self.cold_bridge_endpoint}/v1/feed/upload",
+                    url=f"{endpoint}/v1/feed/upload",
                     files=files,
                 )
                 response.raise_for_status()
