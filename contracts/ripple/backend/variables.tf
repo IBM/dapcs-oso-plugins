@@ -34,12 +34,6 @@ variable "BACKEND_PLUGIN_IMAGE" {
   description = "Backend plugin image containing registry"
 }
 
-variable "BACKEND_ENDPOINT" {
-  type        = string
-  description = "Backend plugin endpoint URL (required by backend_plugin_manager.py)"
-  default     = "http://localhost:4000"
-}
-
 variable "COLD_BRIDGE_IMAGE" {
   type = string
   description = "Cold bridge image containing registry"
@@ -108,12 +102,6 @@ variable "GREP11_CLIENT_CERT" {
   type = string
   description = "GREP11 client certificate"
   default = ""
-}
-
-variable "PORT" {
-  type        = string
-  description = "External port number for api"
-  default     = "4000"
 }
 
 variable "STATIC_IP" {
