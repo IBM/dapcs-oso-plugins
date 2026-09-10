@@ -18,7 +18,7 @@ resource "local_file" "frontend_plugin_podman_play" {
     "${path.module}/frontend_plugin.yml.tftpl",
     { tpl = {
       image                = var.FRONTEND_PLUGIN_IMAGE,
-      SK                   = var.SK,
+      HMZ_USER_SK          = var.HMZ_USER_SK,
       VAULT_IDS            = join(" ", var.VAULT_IDS),
       HMZ_AUTH_HOSTNAME    = var.HMZ_AUTH_HOSTNAME,
       HMZ_AUTH_PATH        = var.HMZ_AUTH_PATH,
