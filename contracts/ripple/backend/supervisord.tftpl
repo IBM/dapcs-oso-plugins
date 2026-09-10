@@ -1,0 +1,48 @@
+%{ for i, vault in tpl.vaults ~}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-${vault.num}-supervisord-config
+data:
+  supervisord.conf: |
+    [supervisord]
+    nodaemon=true
+    logfile=/dev/null
+    logfile_maxbytes=0
+    pidfile=/tmp/supervisord.pid
+
+    [program:vault-core]
+    command=/opt/vault-core/bin/vault-core-omnibus-s390x-g++ -p ${vault.platform} -u 0.0.0.0:${vault.grpc_port}
+    directory=/opt/vault-core
+    autostart=true
+    autorestart=true
+    autorestart_delay=2
+    startretries=5
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+
+    [program:vault-bridge]
+    command=/opt/vault-bridge/bin/vault-bridge
+    directory=/opt/vault-bridge
+    priority=3
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+    startsecs=0
+    stopasgroup=true
+
+    [program:healthcheck]
+    command=/opt/vault-bridge-health-check/bin/vault-bridge-health-check
+    directory=/opt/vault-bridge-health-check
+    priority=4
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+    startsecs=0
+    stopasgroup=true
+%{ endfor ~}

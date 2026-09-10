@@ -1,4 +1,4 @@
-// Copyright (c) 2025 IBM Corp.
+    // Copyright (c) 2025 IBM Corp.
 // All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,17 +17,5 @@ locals {
   workload_template = {
     "type" : "workload",
     "images": {},
-    "volumes": {
-        (var.VOLUME_NAME): merge(
-         {
-            "filesystem": "ext4",
-            "mount": "/mnt/data",
-            "seed": var.WORKLOAD_VOL_SEED,
-        },
-       length(var.WORKLOAD_VOLUME_PREV_SEED) > 0 ?
-       { previousSeed = var.WORKLOAD_VOLUME_PREV_SEED } :
-       {}
-       )
-    }
   }
 }

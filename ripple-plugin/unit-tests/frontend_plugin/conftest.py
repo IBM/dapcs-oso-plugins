@@ -33,22 +33,23 @@ base_env = {
     "APPROVER_FINGERPRINTS": approver_fingerprints,
     "COMPONENT_FINGERPRINTS": component_fingerprints,
     "FRONTEND_ENDPOINT": "https://frontend",
-    "HMZ_AUTH_HOSTNAME": "HMZ_AUTH_HOSTNAME",
-    "HMZ_API_HOSTNAME": "HMZ_API_HOSTNAME",
+    # lowercase so tests can mock https://hmz_auth_hostname/token exactly
+    "HMZ_AUTH_HOSTNAME": "hmz_auth_hostname",
+    "HMZ_API_HOSTNAME": "hmz_api_hostname",
     "VAULTID": "vault_id",
     "TOKEN_EXP": "4h0m0s",
 }
 
 secp256k1_env = base_env | {
-    "SK": create_secp256k1_private_key().decode(),
+    "HMZ_USER_SK": create_secp256k1_private_key().decode(),
 }
 
 secp256r1_env = base_env | {
-    "SK": create_secp256r1_private_key().decode(),
+    "HMZ_USER_SK": create_secp256r1_private_key().decode(),
 }
 
 ed25519_env = base_env | {
-    "SK": create_ED25519_private_key().decode(),
+    "HMZ_USER_SK": create_ED25519_private_key().decode(),
 }
 
 filenames = [str(uuid.uuid4()) for _ in range(5)]
@@ -63,6 +64,12 @@ def rootcert(request, monkeypatch):
 @pytest.fixture(scope="function")
 def seed(request, monkeypatch):
     monkeypatch.setenv("SEED", request.param)
+    yield request.param
+
+
+@pytest.fixture(scope="function")
+def batch_upload_size(request, monkeypatch):
+    monkeypatch.setenv("BATCH_UPLOAD_SIZE", str(request.param))
     yield request.param
 
 
@@ -94,9 +101,3 @@ def app(set_env, tmpdir, mocker):
 def client(app):
     """A test client for the app."""
     return app.test_client()
-
-
-@pytest.fixture(scope="function")
-def batch_upload_size(request, monkeypatch):
-    monkeypatch.setenv("BATCH_UPLOAD_SIZE", str(request.param))
-    yield request.param
