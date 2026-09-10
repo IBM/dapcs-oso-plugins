@@ -20,6 +20,8 @@ import sys
 from flask import abort, current_app, request
 from flask_restx import Namespace, Resource, fields
 
+from oso_ripple_plugins.common import errors
+
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -119,6 +121,9 @@ class Status(Resource):
     def get(self):
         try:
             current_app.bpm.backend_status()
+        except errors.SigningInProgress as e:
+            logger.info(f"Backend not ready: {e}")
+            abort(503)
         except Exception as e:
             logger.exception(e)
             abort(503)

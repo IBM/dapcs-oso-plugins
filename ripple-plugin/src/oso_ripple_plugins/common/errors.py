@@ -14,8 +14,13 @@
 # limitations under the License.
 
 
-
 class ConfigError(Exception):
     """Exception raised when an Environment Variable is not found"""
+
+    pass
+
+
+class SigningInProgress(Exception):
+    """Exception raised while the cold bridge still has pending sign operations"""
 
     pass
