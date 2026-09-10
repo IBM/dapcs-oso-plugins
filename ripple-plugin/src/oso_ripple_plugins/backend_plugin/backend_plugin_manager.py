@@ -68,6 +68,7 @@ class BackendPluginManager:
             ("transactions", "transactionId", "transaction"),
             ("accounts", "accountId", "account"),
             ("manifests", "manifestId", "manifest"),
+            ("rewraps", "rewrapSecretMaterialsId", "rewrap"),
         ]
 
         # Download from all bridge endpoints and merge results
@@ -89,6 +90,7 @@ class BackendPluginManager:
                         "accounts": [item] if section == "accounts" else [],
                         "transactions": [item] if section == "transactions" else [],
                         "manifests": [item] if section == "manifests" else [],
+                        "rewraps": [item] if section == "rewraps" else [],
                         "vaults": [],
                     }
 
@@ -105,6 +107,7 @@ class BackendPluginManager:
         v_tx= {}
         v_ac= {}
         v_ma= {}
+        v_rw= {}
 
         self.logger.info("Saving documents for bulk upload")
         for document in documents:
@@ -116,11 +119,13 @@ class BackendPluginManager:
                     v_tx[vaultid]=[]
                     v_ac[vaultid]=[]
                     v_ma[vaultid]=[]
+                    v_rw[vaultid]=[]
                 # Map sections to their storage dict
                 section_map = {
                     "transactions": v_tx[vaultid],
                     "accounts": v_ac[vaultid],
                     "manifests": v_ma[vaultid],
+                    "rewraps": v_rw[vaultid],
                 }
 
                 for section, storage in section_map.items():
@@ -149,6 +154,7 @@ class BackendPluginManager:
                 "accounts": v_ac[vaultid],
                 "transactions": v_tx[vaultid],
                 "manifests": v_ma[vaultid],
+                "rewraps": v_rw[vaultid],
             }
             vault_file_name = None
             try:

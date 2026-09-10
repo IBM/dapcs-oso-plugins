@@ -14,8 +14,9 @@
 // limitations under the License.
 
 resource "local_file" "ibm_cfg" {
-  content = local.ibm_cfg
-  filename = "podman-play/ibm.cfg"
+  for_each        = { for v in local.resolved_vaults : tostring(v.num) => v }
+  content         = local.ibm_cfg
+  filename        = "podman-play/ibm${each.value.num}.cfg"
   file_permission = "0664"
 }
 
