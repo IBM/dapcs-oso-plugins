@@ -51,8 +51,13 @@ variable "KMSCONNECT_IMAGE" {
 
 variable "VAULT_IDS" {
   type        = list(string)
-  description = "List of vault IDs. Supports a single vault or multiple vaults."
+  description = "List of vault IDs. Supports up to 100 vaults."
   default     = []
+
+  validation {
+    condition     = length(var.VAULT_IDS) <= 100
+    error_message = "VAULT_IDS must contain at most 100 vaults."
+  }
 }
 
 variable "PASSPHRASE" {
