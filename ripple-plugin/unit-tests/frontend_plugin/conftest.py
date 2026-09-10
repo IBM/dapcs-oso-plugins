@@ -41,15 +41,15 @@ base_env = {
 }
 
 secp256k1_env = base_env | {
-    "SK": create_secp256k1_private_key().decode(),
+    "HMZ_USER_SK": create_secp256k1_private_key().decode(),
 }
 
 secp256r1_env = base_env | {
-    "SK": create_secp256r1_private_key().decode(),
+    "HMZ_USER_SK": create_secp256r1_private_key().decode(),
 }
 
 ed25519_env = base_env | {
-    "SK": create_ED25519_private_key().decode(),
+    "HMZ_USER_SK": create_ED25519_private_key().decode(),
 }
 
 filenames = [str(uuid.uuid4()) for _ in range(5)]

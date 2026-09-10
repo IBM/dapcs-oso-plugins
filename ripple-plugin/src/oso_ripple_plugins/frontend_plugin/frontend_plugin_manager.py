@@ -37,9 +37,9 @@ from oso_ripple_plugins.common import crypt, errors, utils
 
 class FrontendPluginManager:
     def __init__(self):
-        if "SK" not in os.environ:
-            raise errors.ConfigError("SK not found")
-        private_key_b64 = os.environ["SK"]
+        if "HMZ_USER_SK" not in os.environ:
+            raise errors.ConfigError("HMZ_USER_SK not found")
+        private_key_b64 = os.environ["HMZ_USER_SK"]
         private_key_decoded = base64.b64decode(private_key_b64)
         self.private_key = load_pem_private_key(private_key_decoded, password=None)
         self.public_key = base64.b64encode(
