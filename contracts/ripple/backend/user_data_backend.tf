@@ -44,6 +44,7 @@ locals {
     for i, vault_id in var.VAULT_IDS : {
       vault_id        = vault_id
       num             = i + 1
+      kms_port        = 11000 + i
       grpc_port       = 10001 + i
       bridge_port      = 9123 + i
       bridge_host_port = 9100 + i

@@ -9,7 +9,7 @@ spec:
   restartPolicy: Always
 
   containers:
-    # Each bridge binds on its own internal port (9123, 9124, ...) and host port (9998, 9999, ...)
+    # Each bridge binds on its own internal and host port.
 %{ for i, vault in tpl.vaults ~}
     - name: cold-bridge-${vault.num}
       image: ${tpl.cold_bridge_image}
@@ -26,8 +26,12 @@ spec:
           hostPort: ${vault.bridge_host_port}
 %{ endfor ~}
 
-    - name: kmsconnect
+%{ for i, vault in tpl.vaults ~}
+    - name: kmsconnect-${vault.num}
       image: ${tpl.kmsconnect_image}
+      env:
+        - name: KMS_URL
+          value: "localhost:${vault.kms_port}"
       volumeMounts:
         - name: ibm-cfg
           mountPath: /opt/kms/cfg/ibm.cfg
@@ -36,6 +40,7 @@ spec:
         - name: cert
           mountPath: /data/cert
           readOnly: true
+%{ endfor ~}
 
     # KMS vault containers - one per vault
     # supervisord.conf is mounted from a ConfigMap per vault with unique -u <address>
@@ -48,7 +53,7 @@ spec:
         - -c
       args:
         - |
-          until (echo > /dev/tcp/localhost/10000) 2>/dev/null; do
+          until (echo > /dev/tcp/localhost/${vault.kms_port}) 2>/dev/null; do
             sleep 2
           done
           exec /opt/entrypoint.sh
@@ -62,7 +67,7 @@ spec:
         - name: VAULT_CORE_LOGLEVEL
           value: "7"
         - name: VAULT_KMS_ENDPOINT
-          value: "localhost:10000"
+          value: "localhost:${vault.kms_port}"
         - name: VAULT_TRUSTED_SIG
           value: "pem:${tpl.notary_messaging_public_key}"
         - name: VAULT_ID
