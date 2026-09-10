@@ -33,9 +33,7 @@ spec:
         - name: KMS_URL
           value: "localhost:${vault.kms_port}"
       volumeMounts:
-        - name: ibm-cfg
-          mountPath: /opt/kms/cfg/ibm.cfg
-        - name: ibm-cfg
+        - name: ibm-${vault.num}-cfg
           mountPath: /app/cfg/ibm.cfg
         - name: cert
           mountPath: /data/cert
@@ -133,11 +131,13 @@ spec:
 
   volumes:
 
-    - name: ibm-cfg
+%{ for i, vault in tpl.vaults ~}
+    - name: ibm-${vault.num}-cfg
       hostPath:
-        path: ./ibm.cfg
+        path: ./ibm${vault.num}.cfg
         type: File
 
+%{ endfor ~}
     - name: cert
       hostPath:
         path: ./cert

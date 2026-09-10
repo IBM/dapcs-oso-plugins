@@ -37,6 +37,7 @@ def test_docs_download(client):
                 ],
                 "transactions": [{"transactionId": "transaction_test"}],
                 "manifests": [{"manifestId": "manifest_test"}],
+                "rewraps": [{"rewrapSecretMaterialsId": "rewrap_test"}],
                 "vaults": [{"vaultId": "vault_test"}],
             },
             status_code=200,
@@ -57,7 +58,7 @@ def test_docs_download(client):
                 "id": "transaction_test",
                 "content": (
                     '{"accounts": [], "transactions": [{"transactionId":'
-                    ' "transaction_test"}], "manifests": [], "vaults": []}'
+                    ' "transaction_test"}], "manifests": [], "rewraps": [], "vaults": []}'
                 ),
                 "metadata": "",
             },
@@ -65,7 +66,7 @@ def test_docs_download(client):
                 "id": "account_test1",
                 "content": (
                     '{"accounts": [{"accountId": "account_test1"}], "transactions": [],'
-                    ' "manifests": [], "vaults": []}'
+                    ' "manifests": [], "rewraps": [], "vaults": []}'
                 ),
                 "metadata": "",
             },
@@ -73,7 +74,7 @@ def test_docs_download(client):
                 "id": "account_test2",
                 "content": (
                     '{"accounts": [{"accountId": "account_test2"}], "transactions": [],'
-                    ' "manifests": [], "vaults": []}'
+                    ' "manifests": [], "rewraps": [], "vaults": []}'
                 ),
                 "metadata": "",
             },
@@ -81,12 +82,20 @@ def test_docs_download(client):
                 "id": "manifest_test",
                 "content": (
                     '{"accounts": [], "transactions": [], "manifests": [{"manifestId":'
-                    ' "manifest_test"}], "vaults": []}'
+                    ' "manifest_test"}], "rewraps": [], "vaults": []}'
+                ),
+                "metadata": "",
+            },
+            {
+                "id": "rewrap_test",
+                "content": (
+                    '{"accounts": [], "transactions": [], "manifests": [], "rewraps":'
+                    ' [{"rewrapSecretMaterialsId": "rewrap_test"}], "vaults": []}'
                 ),
                 "metadata": "",
             },
         ],
-        "count": 4,
+        "count": 5,
     }
 
 
@@ -108,6 +117,9 @@ def test_encrypted_download(seed, client):
                 "manifests": [
                     {"manifestId": "manifest_test", "signedPayload": "manifest_test_signed"}
                 ],
+                "rewraps": [
+                    {"rewrapSecretMaterialsId": "rewrap_test", "signedPayload": "rewrap_test_signed"}
+                ],
                 "vaults": [{"vaultId": "vault_test"}],
             },
             status_code=200,
@@ -122,7 +134,7 @@ def test_encrypted_download(seed, client):
         )
 
     assert response.status_code == 200
-    assert response.json["count"] == 4
+    assert response.json["count"] == 5
 
     # bulk_download encrypts only signedPayload fields inside the JSON;
     # the outer content is still valid JSON — only the ciphered field needs decrypting.
@@ -145,6 +157,11 @@ def test_encrypted_download(seed, client):
     assert response.json["documents"][3]["id"] == "manifest_test"
     assert crypt.decrypt(doc3["manifests"][0]["signedPayloadCiphered"], seed) == "manifest_test_signed"
     assert response.json["documents"][3]["metadata"] == ""
+
+    doc4 = json.loads(response.json["documents"][4]["content"])
+    assert response.json["documents"][4]["id"] == "rewrap_test"
+    assert crypt.decrypt(doc4["rewraps"][0]["signedPayloadCiphered"], seed) == "rewrap_test_signed"
+    assert response.json["documents"][4]["metadata"] == ""
 
 
 def test_empty_download(client):
@@ -175,21 +192,24 @@ def test_docs_upload(client):
             {
                 "id": "test_id",
                 "content": json.dumps({
-                    "vaultId": "test_vault_id",
-                    "accounts": [
-                        {"accountId": "account_test1", "signedPayload": "account_test1_signed"},
-                        {"accountId": "account_test2", "signedPayload": "account_test2_signed"},
-                    ],
-                    "transactions": [
-                        {"transactionId": "transaction_test", "signedPayload": "transaction_test_signed"},
-                    ],
-                    "manifests": [
-                        {"manifestId": "manifest_test", "signedPayload": "manifest_test_signed"},
-                    ],
-                    "vaults": [
-                        {"vaultId": "vault_test", "signedPayload": "vault_test_signed"},
-                    ],
-                }),
+                "vaultId": "test_vault_id",
+                "accounts": [
+                    {"accountId": "account_test1", "signedPayload": "account_test1_signed"},
+                    {"accountId": "account_test2", "signedPayload": "account_test2_signed"},
+                ],
+                "transactions": [
+                    {"transactionId": "transaction_test", "signedPayload": "transaction_test_signed"},
+                ],
+                "manifests": [
+                    {"manifestId": "manifest_test", "signedPayload": "manifest_test_signed"},
+                ],
+                "rewraps": [
+                    {"rewrapSecretMaterialsId": "rewrap_test", "signedPayload": "rewrap_test_signed"},
+                ],
+                "vaults": [
+                    {"vaultId": "vault_test", "signedPayload": "vault_test_signed"},
+                ],
+            }),
                 "signature": "",
                 "metadata": None,
             }
@@ -236,6 +256,9 @@ def test_docs_upload(client):
                     "transactionId": "transaction_test",
                     "signedPayload": "transaction_test_signed",
                 }
+            ],
+            "rewraps": [
+                {"rewrapSecretMaterialsId": "rewrap_test", "signedPayload": "rewrap_test_signed"}
             ],
             "vaultId": "test_vault_id",
         }
@@ -300,6 +323,12 @@ def test_encrypted_upload(seed, client):
                             "signedPayloadCiphered": crypt.encrypt("manifest_test_signed", seed),
                         },
                     ],
+                    "rewraps": [
+                        {
+                            "rewrapSecretMaterialsId": "rewrap_test",
+                            "signedPayloadCiphered": crypt.encrypt("rewrap_test_signed", seed),
+                        },
+                    ],
                     "vaults": [],
                 }),
             }
@@ -346,6 +375,9 @@ def test_encrypted_upload(seed, client):
                     "transactionId": "transaction_test",
                     "signedPayload": "transaction_test_signed",
                 }
+            ],
+            "rewraps": [
+                {"rewrapSecretMaterialsId": "rewrap_test", "signedPayload": "rewrap_test_signed"}
             ],
             "vaultId": "test_vault_id",
         }
