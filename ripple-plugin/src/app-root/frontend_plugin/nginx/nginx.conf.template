@@ -64,6 +64,11 @@ http {
 
     location / {
 
+      # Broadcasting a batch to the custody API retries for up to ~25 minutes;
+      # without this the confirmation queue gets a 504 mid-upload
+      proxy_read_timeout 1800s;
+      proxy_send_timeout 1800s;
+
       proxy_set_header X-SSL-CERT           $ssl_client_escaped_cert;
       proxy_set_header X-SSL-CLIENT-VERIFY  $ssl_client_verify;
 

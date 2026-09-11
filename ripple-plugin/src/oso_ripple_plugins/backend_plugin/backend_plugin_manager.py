@@ -152,13 +152,13 @@ class BackendPluginManager:
 
         def write_document_set(documents, content_key: str, id_key: str):
             for item in response_json.get(content_key, []):
-                self.logger.info(
+                self.logger.debug(
                     f"Saving document from {content_key} for bulk download"
                 )
 
                 try:
                     document_id = item.get(id_key)
-                    self.logger.info(f"Saving document {document_id} for bulk download")
+                    self.logger.debug(f"Saving document {document_id} for bulk download")
 
                     content = copy.deepcopy(empty_content)
                     content.setdefault(content_key, []).append(item)
@@ -173,7 +173,7 @@ class BackendPluginManager:
                         {"id": item.get(id_key), "content": data, "metadata": ""}
                     )
 
-                    self.logger.info(
+                    self.logger.debug(
                         f"Successfully saved document {document_id} for bulk download"
                     )
                 except Exception as err:
@@ -200,7 +200,7 @@ class BackendPluginManager:
         for document in documents:
             try:
                 document_id = document["id"]
-                self.logger.info(f"Saving document {document_id} for bulk upload")
+                self.logger.debug(f"Saving document {document_id} for bulk upload")
 
                 # Decrypt content
                 if len(self.seed) > 0:
@@ -215,7 +215,7 @@ class BackendPluginManager:
                 if vault_id is None:
                     vault_id = contents.get("vaultId")
 
-                self.logger.info(
+                self.logger.debug(
                     f"Successfully saved document {document_id} for bulk upload"
                 )
             except Exception as e:
