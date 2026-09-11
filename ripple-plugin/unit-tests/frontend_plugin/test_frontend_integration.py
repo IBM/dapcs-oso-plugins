@@ -532,8 +532,9 @@ def test_docs_upload_multiple_batches(client):
 
 
 def test_docs_upload_continues_after_batch_failure(client):
-    """If one batch's upload fails, later batches should still be sent
-    (i.e. the whole run should not abort on a single batch failure)."""
+    """If one batch's upload fails permanently, later batches should still
+    be sent, and the response should be 503 so the confirmation queue keeps
+    the documents and retries them on its next cycle."""
     documents = [
         {
             "id": f"test_account_id_{i}",
@@ -556,11 +557,12 @@ def test_docs_upload_continues_after_batch_failure(client):
 
     with requests_mock.mock() as m:
         m.post(token_url, json={"access_token": "test_token"}, status_code=200)
-        # First batch fails (500), second batch succeeds
+        # First batch fails permanently (400 = not retried),
+        # second batch succeeds
         m.post(
             signed_url,
             [
-                {"status_code": 500},
+                {"status_code": 400},
                 {
                     "json": {
                         "accounts": [],
@@ -583,9 +585,9 @@ def test_docs_upload_continues_after_batch_failure(client):
             content_type="application/json",
         )
 
-        # The run should complete (not raise/abort) despite the first
-        # batch failing — both batches should have been attempted.
-        assert response.status_code == 204
+        # Both batches should have been attempted despite the first
+        # failing, and the failure must surface as 503 (not silent success)
+        assert response.status_code == 503
 
         signed_calls = [
             req for req in m.request_history if req.url == signed_url

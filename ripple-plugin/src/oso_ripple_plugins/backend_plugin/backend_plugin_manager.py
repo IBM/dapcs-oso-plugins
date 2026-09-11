@@ -20,6 +20,7 @@ import logging
 import os
 import sys
 import tempfile
+import time
 from typing import Dict, List
 
 import requests
@@ -31,15 +32,50 @@ from oso_ripple_plugins.common import crypt, errors
 urllib3.disable_warnings(InsecureRequestWarning)
 
 
+# (counter prefix in the cold-bridge status payload, category key in uploads)
+SIGNING_CATEGORIES = (
+    ("transaction", "transactions"),
+    ("account", "accounts"),
+    ("manifest", "manifests"),
+)
+
+
 class BackendPluginManager:
     def __init__(self):
-        self.cold_bridge_endpoint = os.environ.get("COLD_BRIDGE_ENDPOINT", 
-                "http://localhost:8080")
+        self.cold_bridge_endpoint = os.environ.get(
+            "COLD_BRIDGE_ENDPOINT", "http://localhost:8080"
+        )
         self.seed = os.environ.get("SEED", "")
+        self.state_file = os.environ.get(
+            "SIGNING_STATE_FILE", "/tmp/backend_signing_state.json"
+        )
+        self.signing_stall_secs = int(os.environ.get("SIGNING_STALL_SECS", "300"))
 
         logging.basicConfig(stream=sys.stdout, level=logging.INFO)
         self.logger = logging.getLogger(__name__)
-        self.logger.info(f"Cold-bridge endpoint configured as: {self.cold_bridge_endpoint}")
+        self.logger.info(
+            f"Cold-bridge endpoint configured as: {self.cold_bridge_endpoint}"
+        )
+
+    def _load_signing_state(self):
+        try:
+            with open(self.state_file) as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            return None
+
+    def _save_signing_state(self, state):
+        try:
+            with open(self.state_file, "w") as f:
+                json.dump(state, f)
+        except OSError as e:
+            self.logger.error(f"Could not persist signing state: {e}")
+
+    def _clear_signing_state(self):
+        try:
+            os.remove(self.state_file)
+        except OSError:
+            pass
 
     def backend_status(self):
         response = requests.get(
@@ -48,8 +84,60 @@ class BackendPluginManager:
         )
         response.raise_for_status()
 
+        state = self._load_signing_state()
+        if state is None:
+            return
+
+        try:
+            counters = response.json()
+        except ValueError:
+            self.logger.warning(
+                "Cold-bridge status response is not JSON;"
+                " skipping signing-progress check"
+            )
+            return
+
+        expected = state.get("expected", {})
+        pending = {}
+        shortfall = {}
+        for prefix, category in SIGNING_CATEGORIES:
+            to_sign = int(counters.get(f"{prefix}ToSign") or 0)
+            signed = int(counters.get(f"{prefix}Signed") or 0)
+            if to_sign > 0:
+                pending[category] = to_sign
+            # Guard the window where the cold vault has not yet registered the
+            # uploaded feed: all-zero counters right after an upload mean
+            # "not started", not "done".
+            if signed < int(expected.get(category, 0)):
+                shortfall[category] = int(expected.get(category, 0)) - signed
+
+        if not pending and not shortfall:
+            self.logger.info(f"Signing complete, feed counters: {counters}")
+            self._clear_signing_state()
+            return
+
+        now = time.time()
+        if counters != state.get("last_counters"):
+            state["last_counters"] = counters
+            state["last_progress_at"] = now
+            self._save_signing_state(state)
+        elif now - state.get("last_progress_at", now) > self.signing_stall_secs:
+            self.logger.error(
+                f"Signing stalled for over {self.signing_stall_secs}s with"
+                f" operations outstanding (pending={pending},"
+                f" shortfall={shortfall}, counters={counters});"
+                " reporting ready with a partial result set"
+            )
+            self._clear_signing_state()
+            return
+
+        self.logger.info(f"Signing in progress, feed counters: {counters}")
+        raise errors.SigningInProgress(f"pending={pending} shortfall={shortfall}")
+
     def bulk_download(self) -> List[Dict]:
-        response = requests.get(f"{self.cold_bridge_endpoint}/v1/feed/download?clean=True")
+        response = requests.get(
+            f"{self.cold_bridge_endpoint}/v1/feed/download?clean=True"
+        )
         response.raise_for_status()
         response_json = response.json()
 
@@ -64,13 +152,13 @@ class BackendPluginManager:
 
         def write_document_set(documents, content_key: str, id_key: str):
             for item in response_json.get(content_key, []):
-                self.logger.info(
+                self.logger.debug(
                     f"Saving document from {content_key} for bulk download"
                 )
 
                 try:
                     document_id = item.get(id_key)
-                    self.logger.info(f"Saving document {document_id} for bulk download")
+                    self.logger.debug(f"Saving document {document_id} for bulk download")
 
                     content = copy.deepcopy(empty_content)
                     content.setdefault(content_key, []).append(item)
@@ -85,7 +173,7 @@ class BackendPluginManager:
                         {"id": item.get(id_key), "content": data, "metadata": ""}
                     )
 
-                    self.logger.info(
+                    self.logger.debug(
                         f"Successfully saved document {document_id} for bulk download"
                     )
                 except Exception as err:
@@ -112,7 +200,7 @@ class BackendPluginManager:
         for document in documents:
             try:
                 document_id = document["id"]
-                self.logger.info(f"Saving document {document_id} for bulk upload")
+                self.logger.debug(f"Saving document {document_id} for bulk upload")
 
                 # Decrypt content
                 if len(self.seed) > 0:
@@ -127,7 +215,7 @@ class BackendPluginManager:
                 if vault_id is None:
                     vault_id = contents.get("vaultId")
 
-                self.logger.info(
+                self.logger.debug(
                     f"Successfully saved document {document_id} for bulk upload"
                 )
             except Exception as e:
@@ -143,6 +231,23 @@ class BackendPluginManager:
             "transactions": transactions,
             "manifests": manifests,
         }
+
+        # Remember how much work was handed to the cold vault so that
+        # backend_status() can hold off the output bridge (503) until the
+        # feed counters show everything has been signed.
+        now = time.time()
+        self._save_signing_state(
+            {
+                "expected": {
+                    "transactions": len(transactions),
+                    "accounts": len(accounts),
+                    "manifests": len(manifests),
+                },
+                "uploaded_at": now,
+                "last_progress_at": now,
+                "last_counters": None,
+            }
+        )
 
         self.logger.info("Performing bulk upload to backend")
 
