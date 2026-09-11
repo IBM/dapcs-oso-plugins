@@ -13,8 +13,8 @@ name = "ibm-oso-fireblocks-plugin"
 requires-python = ">= 3.11"
 dependencies = [
     "requests",
-    "cffi==2.1.1",
-    "cryptography==50.0.0",
+    "cffi",
+    "cryptography",
     "flask",
     "jsonschema",
     "structlog",
@@ -52,4 +52,4 @@ fixable = ["ALL"]
 convention = "numpy"
 
 [tool.uv.sources]
-ibm-oso-framework = { git = "ssh://git@github.com/IBM/dapcs-oso-framework.git", branch = "master" }
+ibm-oso-framework = { git = "ssh://git@github.com/IBM/dapcs-oso-framework.git", branch = "fable/vulnerability" }

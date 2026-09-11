@@ -578,9 +578,9 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cffi", specifier = "==2.1.1" },
+    { name = "cffi" },
     { name = "commitizen", marker = "extra == 'dev'" },
-    { name = "cryptography", specifier = "==50.0.0" },
+    { name = "cryptography" },
     { name = "flask" },
     { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "ibm-oso-framework", marker = "extra == 'dev'", git = "ssh://git@github.com/IBM/dapcs-oso-framework.git?branch=fable%2Fvulnerability" },
