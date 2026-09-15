@@ -3,6 +3,9 @@ kind: Pod
 metadata:
   name: frontend-pod
 spec:
+ dnsConfig:
+  nameservers:
+    - 127.0.0.1
   containers:
     - name: frontend_plugin_app
       image: ${tpl.plugin_image}

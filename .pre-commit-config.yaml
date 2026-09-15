@@ -24,6 +24,9 @@ repos:
             --use-all-plugins,
             --fail-on-unaudited,
           ]
+        additional_dependencies:
+          - boxsdk<10
+          - ibm_db
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0

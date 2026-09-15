@@ -3,6 +3,9 @@ kind: Pod
 metadata:
   name: frontend_plugin
 spec:
+ dnsConfig:
+  nameservers:
+    - 127.0.0.1
   containers:
     - name: frontend_plugin
       image: ${tpl.image}
@@ -32,5 +35,5 @@ spec:
         - name: BATCH_UPLOAD_SIZE
           value: "${tpl.BATCH_UPLOAD_SIZE}"
       ports:
-        - containerPort: 4000 
+        - containerPort: 4000
           hostPort: 4000
