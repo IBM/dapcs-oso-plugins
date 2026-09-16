@@ -11,8 +11,7 @@ HMZ_API_HOSTNAME  = "api.ibm.77z12s.m3t4c0.services"
 # Vault IDs — list of one or more Ripple vault UUIDs
 VAULT_IDS = [
     "<vault-uuid-1>",
-    ....
-    ....
-    ....
+    "<vault-uuid-2>",
+    "<vault-uuid-3>",
 ]
 HMZ_USER_SK=""
