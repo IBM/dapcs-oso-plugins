@@ -183,32 +183,32 @@ def test_encrypted_download(seed, client):
         )
 
     assert response.status_code == 200
+    assert response.json["count"] == 4
+
+    # bulk_download encrypts only signedPayload fields inside the JSON;
+    # the outer content is still valid JSON — only the ciphered field needs decrypting.
+    doc0 = json.loads(response.json["documents"][0]["content"])
     assert response.json["documents"][0]["id"] == "test_transaction_id"
-    assert crypt.decrypt(response.json["documents"][0]["content"], seed) == (
-        '{"vaultId": "test_vault_id", "accounts": [], "transactions":'
-        ' [{"transactionId": "test_transaction_id", "signedPayload":'
-        ' "test_payload"}], "manifests": []}'
+    assert (
+        crypt.decrypt(doc0["transactions"][0]["signedPayloadCiphered"], seed)
+        == "test_payload"
     )
     assert response.json["documents"][0]["metadata"] == ""
+
+    doc1 = json.loads(response.json["documents"][1]["content"])
     assert response.json["documents"][1]["id"] == "test_account_id_1"
-    assert crypt.decrypt(response.json["documents"][1]["content"], seed) == (
-        '{"vaultId": "test_vault_id", "accounts": [{"accountId":'
-        ' "test_account_id_1"}], "transactions": [], "manifests": []}'
-    )
+    assert doc1["accounts"][0]["accountId"] == "test_account_id_1"
     assert response.json["documents"][1]["metadata"] == ""
+
+    doc2 = json.loads(response.json["documents"][2]["content"])
     assert response.json["documents"][2]["id"] == "test_account_id_2"
-    assert crypt.decrypt(response.json["documents"][2]["content"], seed) == (
-        '{"vaultId": "test_vault_id", "accounts": [{"accountId":'
-        ' "test_account_id_2"}], "transactions": [], "manifests": []}'
-    )
+    assert doc2["accounts"][0]["accountId"] == "test_account_id_2"
     assert response.json["documents"][2]["metadata"] == ""
+
+    doc3 = json.loads(response.json["documents"][3]["content"])
     assert response.json["documents"][3]["id"] == "test_manifest_id"
-    assert crypt.decrypt(response.json["documents"][3]["content"], seed) == (
-        '{"vaultId": "test_vault_id", "accounts": [], "transactions": [],'
-        ' "manifests": [{"manifestId": "test_manifest_id"}]}'
-    )
+    assert doc3["manifests"][0]["manifestId"] == "test_manifest_id"
     assert response.json["documents"][3]["metadata"] == ""
-    assert response.json["count"] == 4
 
 
 def test_docs_upload(client):
@@ -352,57 +352,68 @@ def test_empty_upload(client):
 
 @pytest.mark.parametrize("seed", ["passphrase"], indirect=True)
 def test_encrypted_upload(seed, client):
+    # Content mirrors what bulk_download produces when SEED is set:
+    # the outer JSON structure is plain, only signedPayload fields are ciphered.
     payload = {
         "documents": [
             {
                 "id": "test_account_id_2",
                 "metadata": "",
+                "content": json.dumps(
+                    {
+                        "vaultId": "test_vault_id",
+                        "accounts": [{"accountId": "test_account_id_2"}],
+                        "transactions": [],
+                        "manifests": [],
+                    }
+                ),
             },
             {
                 "id": "test_account_id_1",
                 "metadata": "",
+                "content": json.dumps(
+                    {
+                        "vaultId": "test_vault_id",
+                        "accounts": [{"accountId": "test_account_id_1"}],
+                        "transactions": [],
+                        "manifests": [],
+                    }
+                ),
             },
             {
                 "id": "test_manifest_id",
                 "metadata": "",
+                "content": json.dumps(
+                    {
+                        "vaultId": "test_vault_id",
+                        "accounts": [],
+                        "transactions": [],
+                        "manifests": [{"manifestId": "test_manifest_id"}],
+                    }
+                ),
             },
             {
                 "id": "test_transaction_id",
                 "metadata": "",
+                "content": json.dumps(
+                    {
+                        "vaultId": "test_vault_id",
+                        "accounts": [],
+                        "transactions": [
+                            {
+                                "transactionId": "test_transaction_id",
+                                "signedPayloadCiphered": crypt.encrypt(
+                                    "test_payload", seed
+                                ),
+                            }
+                        ],
+                        "manifests": [],
+                    }
+                ),
             },
         ],
         "count": 4,
     }
-
-    payload["documents"][0]["content"] = crypt.encrypt(
-        (
-            '{"vaultId": "test_vault_id", "accounts": [{"accountId":'
-            ' "test_account_id_2"}], "transactions": [], "manifests": []}'
-        ),
-        seed,
-    )
-    payload["documents"][1]["content"] = crypt.encrypt(
-        (
-            '{"vaultId": "test_vault_id", "accounts": [{"accountId":'
-            ' "test_account_id_1"}], "transactions": [], "manifests": []}'
-        ),
-        seed,
-    )
-    payload["documents"][2]["content"] = crypt.encrypt(
-        (
-            '{"vaultId": "test_vault_id", "accounts": [], "transactions": [],'
-            ' "manifests": [{"manifestId": "test_manifest_id"}]}'
-        ),
-        seed,
-    )
-    payload["documents"][3]["content"] = crypt.encrypt(
-        (
-            '{"vaultId": "test_vault_id", "accounts": [], "transactions":'
-            ' [{"transactionId": "test_transaction_id", "signedPayload":'
-            ' "test_payload"}], "manifests": []}'
-        ),
-        seed,
-    )
 
     token_url = "https://hmz_auth_hostname/token"
     signed_url = "https://hmz_api_hostname/v1/vaults/operations/signed"
@@ -507,9 +518,7 @@ def test_docs_upload_multiple_batches(client):
         assert response.status_code == 204
 
         # Two batches (20 + 5) => two calls to the signed upload endpoint
-        signed_calls = [
-            req for req in m.request_history if req.url == signed_url
-        ]
+        signed_calls = [req for req in m.request_history if req.url == signed_url]
         assert len(signed_calls) == 2
 
         first_batch = decoder.MultipartDecoder(
@@ -589,9 +598,7 @@ def test_docs_upload_continues_after_batch_failure(client):
         # failing, and the failure must surface as 503 (not silent success)
         assert response.status_code == 503
 
-        signed_calls = [
-            req for req in m.request_history if req.url == signed_url
-        ]
+        signed_calls = [req for req in m.request_history if req.url == signed_url]
         assert len(signed_calls) == 2
 
 
