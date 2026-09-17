@@ -189,7 +189,10 @@ def test_encrypted_download(seed, client):
     # the outer content is still valid JSON — only the ciphered field needs decrypting.
     doc0 = json.loads(response.json["documents"][0]["content"])
     assert response.json["documents"][0]["id"] == "test_transaction_id"
-    assert crypt.decrypt(doc0["transactions"][0]["signedPayloadCiphered"], seed) == "test_payload"
+    assert (
+        crypt.decrypt(doc0["transactions"][0]["signedPayloadCiphered"], seed)
+        == "test_payload"
+    )
     assert response.json["documents"][0]["metadata"] == ""
 
     doc1 = json.loads(response.json["documents"][1]["content"])
@@ -356,47 +359,57 @@ def test_encrypted_upload(seed, client):
             {
                 "id": "test_account_id_2",
                 "metadata": "",
-                "content": json.dumps({
-                    "vaultId": "test_vault_id",
-                    "accounts": [{"accountId": "test_account_id_2"}],
-                    "transactions": [],
-                    "manifests": [],
-                }),
+                "content": json.dumps(
+                    {
+                        "vaultId": "test_vault_id",
+                        "accounts": [{"accountId": "test_account_id_2"}],
+                        "transactions": [],
+                        "manifests": [],
+                    }
+                ),
             },
             {
                 "id": "test_account_id_1",
                 "metadata": "",
-                "content": json.dumps({
-                    "vaultId": "test_vault_id",
-                    "accounts": [{"accountId": "test_account_id_1"}],
-                    "transactions": [],
-                    "manifests": [],
-                }),
+                "content": json.dumps(
+                    {
+                        "vaultId": "test_vault_id",
+                        "accounts": [{"accountId": "test_account_id_1"}],
+                        "transactions": [],
+                        "manifests": [],
+                    }
+                ),
             },
             {
                 "id": "test_manifest_id",
                 "metadata": "",
-                "content": json.dumps({
-                    "vaultId": "test_vault_id",
-                    "accounts": [],
-                    "transactions": [],
-                    "manifests": [{"manifestId": "test_manifest_id"}],
-                }),
+                "content": json.dumps(
+                    {
+                        "vaultId": "test_vault_id",
+                        "accounts": [],
+                        "transactions": [],
+                        "manifests": [{"manifestId": "test_manifest_id"}],
+                    }
+                ),
             },
             {
                 "id": "test_transaction_id",
                 "metadata": "",
-                "content": json.dumps({
-                    "vaultId": "test_vault_id",
-                    "accounts": [],
-                    "transactions": [
-                        {
-                            "transactionId": "test_transaction_id",
-                            "signedPayloadCiphered": crypt.encrypt("test_payload", seed),
-                        }
-                    ],
-                    "manifests": [],
-                }),
+                "content": json.dumps(
+                    {
+                        "vaultId": "test_vault_id",
+                        "accounts": [],
+                        "transactions": [
+                            {
+                                "transactionId": "test_transaction_id",
+                                "signedPayloadCiphered": crypt.encrypt(
+                                    "test_payload", seed
+                                ),
+                            }
+                        ],
+                        "manifests": [],
+                    }
+                ),
             },
         ],
         "count": 4,
@@ -505,9 +518,7 @@ def test_docs_upload_multiple_batches(client):
         assert response.status_code == 204
 
         # Two batches (20 + 5) => two calls to the signed upload endpoint
-        signed_calls = [
-            req for req in m.request_history if req.url == signed_url
-        ]
+        signed_calls = [req for req in m.request_history if req.url == signed_url]
         assert len(signed_calls) == 2
 
         first_batch = decoder.MultipartDecoder(
@@ -530,8 +541,9 @@ def test_docs_upload_multiple_batches(client):
 
 
 def test_docs_upload_continues_after_batch_failure(client):
-    """If one batch's upload fails, later batches should still be sent
-    (i.e. the whole run should not abort on a single batch failure)."""
+    """If one batch's upload fails permanently, later batches should still
+    be sent, and the response should be 503 so the confirmation queue keeps
+    the documents and retries them on its next cycle."""
     documents = [
         {
             "id": f"test_account_id_{i}",
@@ -554,11 +566,12 @@ def test_docs_upload_continues_after_batch_failure(client):
 
     with requests_mock.mock() as m:
         m.post(token_url, json={"access_token": "test_token"}, status_code=200)
-        # First batch fails (500), second batch succeeds
+        # First batch fails permanently (400 = not retried),
+        # second batch succeeds
         m.post(
             signed_url,
             [
-                {"status_code": 500},
+                {"status_code": 400},
                 {
                     "json": {
                         "accounts": [],
@@ -581,13 +594,11 @@ def test_docs_upload_continues_after_batch_failure(client):
             content_type="application/json",
         )
 
-        # The run should complete (not raise/abort) despite the first
-        # batch failing — both batches should have been attempted.
-        assert response.status_code == 204
+        # Both batches should have been attempted despite the first
+        # failing, and the failure must surface as 503 (not silent success)
+        assert response.status_code == 503
 
-        signed_calls = [
-            req for req in m.request_history if req.url == signed_url
-        ]
+        signed_calls = [req for req in m.request_history if req.url == signed_url]
         assert len(signed_calls) == 2
 
 
