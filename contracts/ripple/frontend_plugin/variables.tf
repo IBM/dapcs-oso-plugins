@@ -42,6 +42,7 @@ variable "SEED" {
 variable "HMZ_USER_SK" {
   type = string
   description = "Private (secret) key of a registered user used to login to Ripple"
+  sensitive = true
 }
 
 variable "VAULT_IDS" {
