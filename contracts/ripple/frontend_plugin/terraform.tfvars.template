@@ -16,3 +16,6 @@ VAULT_IDS = [
     ....
 ]
 HMZ_USER_SK=""
+
+# Encryption passphrase — must match OSOENCRYPTIONPASS in backend terraform.tfvars.
+OSOENCRYPTIONPASS=""

@@ -31,7 +31,7 @@ variable "FRONTEND_PLUGIN_IMAGE" {
   description = "Frontend plugin image name"
 }
 
-variable "SEED" {
+variable "OSOENCRYPTIONPASS" {
   type      = string
   description = "Encrypt data through the iteration pipeline (should be same value as backend plugin)"
   default   = ""
