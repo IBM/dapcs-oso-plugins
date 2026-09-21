@@ -76,13 +76,17 @@ class BackendPluginManager:
             response = requests.get(f"{endpoint}/v1/feed/download?clean=true")
             response.raise_for_status()
             response_json = response.json()
-            self.logger.info(f"Bulk download from bridge {endpoint} finished successfully")
+            self.logger.info(
+                f"Bulk download from bridge {endpoint} finished successfully"
+            )
 
             for section, id_key, type_name in sections:
                 for item in response_json.get(section, []):
                     # Encrypt if seed is set
                     if self.seed and "signedPayload" in item:
-                        item["signedPayloadCiphered"] = crypt.encrypt(item["signedPayload"], self.seed)
+                        item["signedPayloadCiphered"] = crypt.encrypt(
+                            item["signedPayload"], self.seed
+                        )
                         del item["signedPayload"]
 
                     # Build content and metadata
@@ -94,32 +98,34 @@ class BackendPluginManager:
                         "vaults": [],
                     }
 
-                    documents.append({
-                        "id": item[id_key],
-                        "content": json.dumps(content),
-                        "metadata": "",
-                    })
+                    documents.append(
+                        {
+                            "id": item[id_key],
+                            "content": json.dumps(content),
+                            "metadata": "",
+                        }
+                    )
 
         self.logger.info("Bulk download finished successfully")
         return documents
 
     def bulk_upload(self, documents):
-        v_tx= {}
-        v_ac= {}
-        v_ma= {}
-        v_rw= {}
+        v_tx = {}
+        v_ac = {}
+        v_ma = {}
+        v_rw = {}
 
         self.logger.info("Saving documents for bulk upload")
         for document in documents:
             try:
                 contents = json.loads(document["content"])
-                vaultid= contents.get("vaultId")
+                vaultid = contents.get("vaultId")
 
                 if vaultid not in v_tx:
-                    v_tx[vaultid]=[]
-                    v_ac[vaultid]=[]
-                    v_ma[vaultid]=[]
-                    v_rw[vaultid]=[]
+                    v_tx[vaultid] = []
+                    v_ac[vaultid] = []
+                    v_ma[vaultid] = []
+                    v_rw[vaultid] = []
                 # Map sections to their storage dict
                 section_map = {
                     "transactions": v_tx[vaultid],
@@ -131,7 +137,9 @@ class BackendPluginManager:
                 for section, storage in section_map.items():
                     for item in contents.get(section, []):
                         if self.seed and "signedPayloadCiphered" in item:
-                            item["signedPayload"] = crypt.decrypt(item["signedPayloadCiphered"], self.seed)
+                            item["signedPayload"] = crypt.decrypt(
+                                item["signedPayloadCiphered"], self.seed
+                            )
                             del item["signedPayloadCiphered"]
                         storage.append(item)
 
@@ -146,7 +154,9 @@ class BackendPluginManager:
             # Route upload to the bridge that owns this vault
             endpoint = self.vault_bridge_map.get(vaultid)
             if not endpoint:
-                self.logger.error(f"No bridge endpoint found for vault {vaultid}, skipping")
+                self.logger.error(
+                    f"No bridge endpoint found for vault {vaultid}, skipping"
+                )
                 continue
 
             content = {

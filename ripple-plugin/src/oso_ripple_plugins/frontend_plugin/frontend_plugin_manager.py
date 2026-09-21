@@ -215,8 +215,15 @@ class FrontendPluginManager:
         self.logger.info("Successfully obtained JWT access token")
         return token
 
-    def _write_document_set(self, documents: list, vault_json: dict, vaultid: str,
-                            empty_content: dict, content_key: str, id_key: str) -> None:
+    def _write_document_set(
+        self,
+        documents: list,
+        vault_json: dict,
+        vaultid: str,
+        empty_content: dict,
+        content_key: str,
+        id_key: str,
+    ) -> None:
         """Append OSO documents built from one content section of a vault response."""
         for item in vault_json.get(content_key, []):
             try:
@@ -332,7 +339,9 @@ class FrontendPluginManager:
                 )
                 continue
 
-            self.logger.info("Bulk download finished successfully for vault %s", vaultid)
+            self.logger.info(
+                "Bulk download finished successfully for vault %s", vaultid
+            )
 
             empty_content = {
                 "vaultId": vault_json.get("vaultId", vaultid),
@@ -369,9 +378,7 @@ class FrontendPluginManager:
                 json_bytes = json.dumps(content).encode("utf-8")
                 file_obj = io.BytesIO(json_bytes)
 
-                files = {
-                    "files": ("batch.json", file_obj, "application/json")
-                }
+                files = {"files": ("batch.json", file_obj, "application/json")}
 
                 response = requests.post(
                     url=f"https://{self.hmz_api_hostname}/v1/vaults/operations/signed",
@@ -445,12 +452,14 @@ class FrontendPluginManager:
                 # Flush every BATCH_SIZE documents
                 if doc_count >= BATCH_SIZE:
                     try:
-                        send_batch({
-                            "accounts": accounts,
-                            "transactions": transactions,
-                            "manifests": manifests,
-                            "vaults": vaults,
-                        })
+                        send_batch(
+                            {
+                                "accounts": accounts,
+                                "transactions": transactions,
+                                "manifests": manifests,
+                                "vaults": vaults,
+                            }
+                        )
                     except Exception:
                         self.logger.exception("Batch flush failed; continuing")
                     finally:
@@ -475,12 +484,14 @@ class FrontendPluginManager:
 
         # ---- Send remaining documents ----
         if doc_count > 0:
-            send_batch({
-                "accounts": accounts,
-                "transactions": transactions,
-                "manifests": manifests,
-                "vaults": vaults,
-            })
+            send_batch(
+                {
+                    "accounts": accounts,
+                    "transactions": transactions,
+                    "manifests": manifests,
+                    "vaults": vaults,
+                }
+            )
 
         self.logger.info("Bulk upload finished successfully")
 
