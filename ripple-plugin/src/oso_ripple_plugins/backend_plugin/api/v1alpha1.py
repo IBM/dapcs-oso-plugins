@@ -53,6 +53,14 @@ documents_model = api.model(
     },
 )
 
+error_model = api.model(
+    "Error",
+    {
+        "code": fields.String(description="Error code", required=True),
+        "message": fields.String(description="Error message", required=True),
+    },
+)
+
 
 @api.route("/documents", methods=["POST"])
 class Upload(Resource):
@@ -110,42 +118,24 @@ class Download(Resource):
 
 @api.route("/status", methods=["GET"])
 class Status(Resource):
-    # Define the Error model
-    error_model = api.model(
-        "Error",
-        {
-            "code": fields.String(description="Error code"),
-            "message": fields.String(description="Error message")
-        }
-    )
-    
     component_status_model = api.model(
         "ComponentStatus",
         {
-            "status_code": fields.Integer(description="HTTP status code"),
-            "status": fields.String(description="Human readable message"),
-            "errors": fields.List(fields.Nested(error_model), default=[], description="List of errors")
-        }
+            "status": fields.String(description="Human readable status"),
+            "error": fields.String(description="Error detail, empty string on success"),
+        },
     )
 
     @api.response(code=200, description="Success", model=component_status_model)
+    @api.response(code=401, description="Unauthorized", model=error_model)
+    @api.response(code=403, description="Forbidden", model=error_model)
     @api.response(code=503, description="Unavailable", model=component_status_model)
     def get(self):
         """Return the BPM component status"""
         try:
-            # Capture backend status if needed
-            backend_result = current_app.bpm.backend_status()
+            current_app.bpm.backend_status()
         except Exception as e:
-            logger.exception("BPM backend status check failed")
-            return {
-                "status_code": 503,
-                "status": "Unavailable",
-                "errors": [{"code": "BACKEND_ERROR", "message": str(e)}]
-            }, 503
+            logger.exception("Backend status check failed")
+            return {"status": "Unavailable", "error": str(e)}, 503
 
-        # Return a successful status
-        return {
-            "status_code": 200,
-            "status": "OK",
-            "errors": []
-        }, 200
+        return {"status": "OK", "error": ""}, 200

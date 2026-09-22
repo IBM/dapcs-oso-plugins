@@ -32,8 +32,12 @@ documents_model = api.model(
     },
 )
 
-component_status_model = api.model(
-    "ComponentStatus", {"status": fields.String(), "error": fields.String()}
+error_model = api.model(
+    "Error",
+    {
+        "code": fields.String(description="Error code", required=True),
+        "message": fields.String(description="Error message", required=True),
+    },
 )
 
 
@@ -88,43 +92,24 @@ class Upload(Resource):
 
 @api.route("/status", methods=["GET"])
 class Status(Resource):
-   # Define the error model
-    error_model = api.model(
-        "Error",
-        {
-            "code": fields.String(description="Error code"),
-            "message": fields.String(description="Error message")
-        }
-    )
-
-    # Define the component status model
     component_status_model = api.model(
         "ComponentStatus",
         {
-            "status_code": fields.Integer(description="HTTP status code"),
-            "status": fields.String(description="Human readable message"),
-            "errors": fields.List(fields.Nested(error_model), default=[], description="List of errors")
-        }
+            "status": fields.String(description="Human readable status"),
+            "error": fields.String(description="Error detail, empty string on success"),
+        },
     )
 
     @api.response(code=200, description="Success", model=component_status_model)
+    @api.response(code=401, description="Unauthorized", model=error_model)
+    @api.response(code=403, description="Forbidden", model=error_model)
     @api.response(code=503, description="Unavailable", model=component_status_model)
     def get(self):
         """Return the component status"""
         try:
-            # Capture backend status if needed
-            backend_result = current_app.fpm.backend_status()
+            current_app.fpm.backend_status()
         except Exception as e:
             logger.exception("Backend status check failed")
-            return {
-                "status_code": 503,
-                "status": "Unavailable",
-                "errors": [{"code": "BACKEND_ERROR", "message": str(e)}]
-            }, 503
+            return {"status": "Unavailable", "error": str(e)}, 503
 
-        # Return a successful status
-        return {
-            "status_code": 200,
-            "status": "OK",
-            "errors": []
-        }, 200
+        return {"status": "OK", "error": ""}, 200
