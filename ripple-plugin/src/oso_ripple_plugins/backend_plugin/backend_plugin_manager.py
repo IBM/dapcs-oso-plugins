@@ -50,6 +50,14 @@ class BackendPluginManager:
         self.logger = logging.getLogger(__name__)
         self.logger.info(f"Cold-bridge endpoints configured: {self.vault_bridge_map}")
 
+        if not self.seed:
+            self.logger.warning(
+                "OSOENCRYPTIONPASS is not set — documents will transit the conductor "
+                "pipeline without encryption or integrity protection. "
+                "Set OSOENCRYPTIONPASS in terraform.tfvars to enable AES-GCM encryption "
+                "and HMAC-SHA256 integrity verification."
+            )
+
     def backend_status(self):
         # Check status on all bridge endpoints
         status_errors = []

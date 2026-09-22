@@ -25,7 +25,7 @@ resource "local_file" "frontend_plugin_podman_play" {
       HMZ_AUTH_CUSTOMERID  = var.HMZ_AUTH_CUSTOMERID,
       HMZ_API_HOSTNAME     = var.HMZ_API_HOSTNAME,
       ROOTCERT             = var.ROOTCERT,
-      SEED                 = var.SEED,
+      OSOENCRYPTIONPASS    = var.OSOENCRYPTIONPASS,
       TOKEN_EXP            = var.TOKEN_EXP,
       BATCH_UPLOAD_SIZE    = var.BATCH_UPLOAD_SIZE,
     } },

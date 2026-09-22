@@ -61,7 +61,15 @@ class FrontendPluginManager:
             raise errors.ConfigError("VAULTID not found")
         self.vaultids = os.environ["VAULTID"].split()
 
-        self.seed = os.environ.get("SEED", "")
+        self.seed = os.environ.get("OSOENCRYPTIONPASS", "")
+
+        if not self.seed:
+            logging.getLogger(__name__).warning(
+                "OSOENCRYPTIONPASS is not set — documents will transit the conductor "
+                "pipeline without encryption or integrity protection. "
+                "Set OSOENCRYPTIONPASS in terraform.tfvars to enable AES-GCM encryption "
+                "and HMAC-SHA256 integrity verification."
+            )
 
         self.root_cert_b64 = os.environ.get("ROOTCERT")
         with tempfile.NamedTemporaryFile(delete=False) as root_cert_file:
