@@ -29,7 +29,7 @@ resource "local_file" "grep_ca" {
 resource "local_file" "grep_client_key" {
   content = var.INTERNAL_GREP11 ? tls_private_key.client_key.private_key_pem_pkcs8 : var.GREP11_CLIENT_KEY
   filename = "podman-play/cert/client-key.pem"
-  file_permission = "0664"
+  file_permission = "0600"
 }
 
 resource "local_file" "grep_client_cert" {
@@ -164,7 +164,7 @@ resource "local_file" "grep11_server_key" {
   count = var.INTERNAL_GREP11 ? 1 : 0
   content = tls_private_key.server_key.private_key_pem
   filename = "${path.module}/podman-play/srv1/grep11server-key.pem"
-  file_permission = "0664"
+  file_permission = "0600"
 }
 
 resource "local_file" "grep11_server_cert" {
@@ -199,7 +199,7 @@ resource "local_file" "c16_client_key" {
   count = (var.INTERNAL_GREP11 && !var.CRYPTO_PASSTHROUGH_ENABLEMENT) ? 1 : 0
   content = var.C16_CLIENT_KEY
   filename = "${path.module}/podman-play/cfg/c16client-key.pem"
-  file_permission = "0664"
+  file_permission = "0600"
 }
 
 locals {
