@@ -31,3 +31,21 @@ class BroadcastError(Exception):
     custody API after exhausting retries"""
 
     pass
+
+
+class NetworkError(Exception):
+    """Raised for network-level failures (timeout, connection error)"""
+
+    pass
+
+
+class AuthenticationError(Exception):
+    """Raised when the token endpoint returns 401 or 403"""
+
+    pass
+
+
+class TokenError(Exception):
+    """Raised when a token cannot be obtained or parsed from the response"""
+
+    pass

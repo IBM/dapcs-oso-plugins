@@ -34,8 +34,12 @@ documents_model = api.model(
     },
 )
 
-component_status_model = api.model(
-    "ComponentStatus", {"status": fields.String(), "error": fields.String()}
+error_model = api.model(
+    "Error",
+    {
+        "code": fields.String(description="Error code", required=True),
+        "message": fields.String(description="Error message", required=True),
+    },
 )
 
 
@@ -93,15 +97,6 @@ class Upload(Resource):
 
 @api.route("/status", methods=["GET"])
 class Status(Resource):
-    # Define the error model
-    error_model = api.model(
-        "Error",
-        {
-            "code": fields.String(description="Error code"),
-            "message": fields.String(description="Error message"),
-        },
-    )
-
     # Define the component status model
     component_status_model = api.model(
         "ComponentStatus",
@@ -115,6 +110,8 @@ class Status(Resource):
     )
 
     @api.response(code=200, description="Success", model=component_status_model)
+    @api.response(code=401, description="Unauthorized", model=error_model)
+    @api.response(code=403, description="Forbidden", model=error_model)
     @api.response(code=503, description="Unavailable", model=component_status_model)
     def get(self):
         """Return the component status"""
