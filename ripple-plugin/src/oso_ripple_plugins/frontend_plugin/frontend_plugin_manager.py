@@ -83,6 +83,24 @@ class FrontendPluginManager:
         if self.batch_size <= 0:
             raise errors.ConfigError("BATCH_UPLOAD_SIZE must be a positive integer")
 
+        # Defaults retry each batch for >20 minutes total (linear backoff:
+        # 30+60+...+270s = 22.5 min) without hammering the custody API
+        try:
+            self.broadcast_retries = int(os.environ.get("BROADCAST_RETRIES", 10))
+            self.broadcast_retry_delay = float(
+                os.environ.get("BROADCAST_RETRY_DELAY_SECS", 30)
+            )
+        except ValueError:
+            raise errors.ConfigError(
+                "BROADCAST_RETRIES and BROADCAST_RETRY_DELAY_SECS must be numeric"
+            )
+
+        if self.broadcast_retries < 1:
+            raise errors.ConfigError("BROADCAST_RETRIES must be a positive integer")
+
+        # (connect, read) timeouts for requests to the Ripple Custody API
+        self.request_timeout = (10, 120)
+
         logging.basicConfig(stream=sys.stdout, level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
@@ -130,8 +148,8 @@ class FrontendPluginManager:
         else:
             raise Exception(f"Key type not supported: {type(self.private_key)}")
 
-    @lru_cache()  # Cache result - token + timestamp
-    def _get_token(self) -> Tuple[str, float]:
+    @lru_cache()  # Cache result - token + issue time + lifetime
+    def _get_token(self) -> Tuple[str, float, float]:
         self.logger.info("Generating new JWT access token...")
         challenge = str(uuid.uuid4())
         signature = self._sign(challenge)
@@ -149,7 +167,7 @@ class FrontendPluginManager:
                 data=data,
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
                 verify=self.verify,
-                timeout=(5, 30),
+                timeout=self.request_timeout,
             )
         except requests.exceptions.Timeout as e:
             self.logger.error("Timeout while requesting token: %s", e)
@@ -192,8 +210,16 @@ class FrontendPluginManager:
             self.logger.error("No access_token in response: %s", response_json)
             raise errors.TokenError("Could not get token from response")
 
+        lifetime = float(self.token_exp_in_secs)
+        expires_in = response_json.get("expires_in")
+        if expires_in is not None:
+            try:
+                lifetime = min(float(expires_in), lifetime)
+            except (TypeError, ValueError):
+                self.logger.warning(f"Ignoring non-numeric expires_in: {expires_in}")
+
         self.logger.info("Successfully generated new JWT access token")
-        return token, time.time()
+        return token, time.time(), lifetime
 
     def _write_root_cert(self, root_cert_file: IO[bytes]) -> Union[str, bool]:
         if self.root_cert_b64:
@@ -206,12 +232,12 @@ class FrontendPluginManager:
 
     def get_token(self) -> str:
         self.logger.info("Obtaining JWT access token...")
-        token, exp_time = self._get_token()
-        if (
-            time.time() - (exp_time - int(os.environ.get("TOKEN_EXP_BUFF", 10)))
-        ) > self.token_exp_in_secs:  # gen new token if within 10 secs of expiry
+        token, issued_at, lifetime = self._get_token()
+        buff = int(os.environ.get("TOKEN_EXP_BUFF", 10))
+        if time.time() - issued_at > lifetime - buff:
+            # token is (about to be) expired - generate a new one
             self._get_token.cache_clear()
-            token, exp_time = self._get_token()
+            token, issued_at, lifetime = self._get_token()
         self.logger.info("Successfully obtained JWT access token")
         return token
 
@@ -297,8 +323,21 @@ class FrontendPluginManager:
                     url=url,
                     headers={"Authorization": f"Bearer {token}"},
                     verify=self.verify,
-                    timeout=30,
+                    timeout=self.request_timeout,
                 )
+                if response.status_code == 401:
+                    self.logger.warning(
+                        "Download for vault %s got HTTP 401; refreshing access token",
+                        vaultid,
+                    )
+                    self._get_token.cache_clear()
+                    token = self.get_token()
+                    response = requests.get(
+                        url=url,
+                        headers={"Authorization": f"Bearer {token}"},
+                        verify=self.verify,
+                        timeout=self.request_timeout,
+                    )
             except requests.exceptions.RequestException as e:
                 self.logger.error(
                     "Network error while downloading vault %s: %s",
@@ -362,57 +401,14 @@ class FrontendPluginManager:
         return documents
 
     def bulk_upload(self, documents):
-        BATCH_SIZE = self.batch_size
-
-        def send_batch(content):
-            self.logger.info(
-                "Performing bulk upload to harmonize (batch size=%s)",
-                len(content.get("transactions", []))
-                + len(content.get("accounts", []))
-                + len(content.get("manifests", [])),
-            )
-
-            try:
-                token = self.get_token()
-
-                json_bytes = json.dumps(content).encode("utf-8")
-                file_obj = io.BytesIO(json_bytes)
-
-                files = {"files": ("batch.json", file_obj, "application/json")}
-
-                response = requests.post(
-                    url=f"https://{self.hmz_api_hostname}/v1/vaults/operations/signed",
-                    headers={
-                        "Authorization": f"Bearer {token}"
-                        # DO NOT set Content-Type manually
-                    },
-                    files=files,
-                    verify=self.verify,
-                    timeout=60,
-                )
-
-            except requests.exceptions.RequestException as e:
-                self.logger.error("Network error during bulk upload: %s", str(e))
-                raise
-
-            status = response.status_code
-
-            if not (200 <= status < 300):
-                self.logger.error(
-                    "Backend rejected batch: status=%s body=%s",
-                    status,
-                    response.text[:2000],  # prevent huge logs
-                )
-                response.raise_for_status()
-
-            self.logger.info("Batch upload successful (status=%s)", status)
-
         # ---- Batch accumulators ----
         vaults = []
         transactions = []
         accounts = []
         manifests = []
         doc_count = 0
+        batch_num = 0
+        failed_batches = []
 
         self.logger.info("Saving documents for bulk upload")
 
@@ -449,26 +445,23 @@ class FrontendPluginManager:
 
                 doc_count += 1
 
-                # Flush every BATCH_SIZE documents
-                if doc_count >= BATCH_SIZE:
-                    try:
-                        send_batch(
-                            {
-                                "accounts": accounts,
-                                "transactions": transactions,
-                                "manifests": manifests,
-                                "vaults": vaults,
-                            }
-                        )
-                    except Exception:
-                        self.logger.exception("Batch flush failed; continuing")
-                    finally:
-                        # Always reset accumulators so later batches are not polluted
-                        vaults = []
-                        transactions = []
-                        accounts = []
-                        manifests = []
-                        doc_count = 0
+                # Flush every batch_size documents
+                if doc_count >= self.batch_size:
+                    batch_num += 1
+                    self._flush_batch(
+                        batch_num,
+                        transactions,
+                        accounts,
+                        manifests,
+                        vaults,
+                        failed_batches,
+                    )
+                    # Always reset accumulators so later batches are not polluted
+                    vaults = []
+                    transactions = []
+                    accounts = []
+                    manifests = []
+                    doc_count = 0
 
                 self.logger.info(
                     "Successfully processed document %s",
@@ -484,16 +477,102 @@ class FrontendPluginManager:
 
         # ---- Send remaining documents ----
         if doc_count > 0:
-            send_batch(
-                {
-                    "accounts": accounts,
-                    "transactions": transactions,
-                    "manifests": manifests,
-                    "vaults": vaults,
-                }
+            batch_num += 1
+            self._flush_batch(
+                batch_num, transactions, accounts, manifests, vaults, failed_batches
+            )
+
+        if failed_batches:
+            self.logger.error(
+                f"Bulk upload finished with {len(failed_batches)} failed batch(es): "
+                f"{failed_batches}"
+            )
+            raise errors.BroadcastError(
+                f"{len(failed_batches)} of {batch_num} batch(es) failed to upload "
+                f"after {self.broadcast_retries} attempt(s) each: {failed_batches}"
             )
 
         self.logger.info("Bulk upload finished successfully")
+
+    def _flush_batch(
+        self, batch_num, transactions, accounts, manifests, vaults, failed_batches
+    ):
+        """Send one batch; on failure, log it, record it, and let the run continue."""
+        try:
+            self._send_batch(transactions, accounts, manifests, vaults)
+        except Exception as e:
+            self.logger.exception(f"Batch {batch_num} failed to upload: {e}")
+            failed_batches.append({"batch_num": batch_num, "error": str(e)})
+
+    def _is_retryable(self, response) -> bool:
+        # 401: token may have expired mid-run; 429/5xx: transient on Ripple's side
+        return (
+            response.status_code == 401
+            or response.status_code == 429
+            or response.status_code >= 500
+        )
+
+    def _send_batch(self, transactions, accounts, manifests, vaults):
+        content = {
+            "accounts": accounts,
+            "transactions": transactions,
+            "manifests": manifests,
+            "vaults": vaults,
+        }
+
+        self.logger.info(
+            f"Performing bulk upload to frontend "
+            f"(accounts={len(accounts)}, transactions={len(transactions)}, "
+            f"manifests={len(manifests)}, vaults={len(vaults)})"
+        )
+
+        json_bytes = json.dumps(content).encode("utf-8")
+
+        last_error = None
+        for attempt in range(1, self.broadcast_retries + 1):
+            try:
+                token = self.get_token()
+                # Rebuild the file object each attempt: requests consumes it
+                response = requests.post(
+                    url=f"https://{self.hmz_api_hostname}/v1/vaults/operations/signed",
+                    headers={
+                        "Authorization": f"Bearer {token}"
+                        # DO NOT set Content-Type manually
+                    },
+                    files={
+                        "files": (
+                            "batch.json",
+                            io.BytesIO(json_bytes),
+                            "application/json",
+                        )
+                    },
+                    verify=self.verify,
+                    timeout=self.request_timeout,
+                )
+                if response.ok:
+                    return
+                self.logger.warning(
+                    f"Upload attempt {attempt}/{self.broadcast_retries} got "
+                    f"HTTP {response.status_code}: {response.text[:500]}"
+                )
+                if response.status_code == 401:
+                    self._get_token.cache_clear()
+                if not self._is_retryable(response):
+                    response.raise_for_status()
+                last_error = requests.HTTPError(
+                    f"HTTP {response.status_code}", response=response
+                )
+            except (requests.ConnectionError, requests.Timeout) as e:
+                self.logger.warning(
+                    f"Upload attempt {attempt}/{self.broadcast_retries} failed: "
+                    f"{type(e).__name__}"
+                )
+                last_error = e
+            if attempt < self.broadcast_retries:
+                time.sleep(self.broadcast_retry_delay * attempt)
+        if last_error is None:
+            last_error = errors.BroadcastError("upload failed with no response")
+        raise last_error
 
     def backend_status(self):
         pass

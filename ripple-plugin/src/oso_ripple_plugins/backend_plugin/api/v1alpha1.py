@@ -20,6 +20,8 @@ import sys
 from flask import abort, current_app, request
 from flask_restx import Namespace, Resource, fields
 
+from oso_ripple_plugins.common import errors
+
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -121,8 +123,11 @@ class Status(Resource):
     component_status_model = api.model(
         "ComponentStatus",
         {
-            "status": fields.String(description="Human readable status"),
-            "error": fields.String(description="Error detail, empty string on success"),
+            "status_code": fields.Integer(description="HTTP status code"),
+            "status": fields.String(description="Human readable message"),
+            "errors": fields.List(
+                fields.Nested(error_model), default=[], description="List of errors"
+            ),
         },
     )
 
@@ -134,8 +139,20 @@ class Status(Resource):
         """Return the BPM component status"""
         try:
             current_app.bpm.backend_status()
+        except errors.SigningInProgress as e:
+            logger.info(f"Backend not ready: {e}")
+            return {
+                "status_code": 503,
+                "status": "Unavailable",
+                "errors": [{"code": "SIGNING_IN_PROGRESS", "message": str(e)}],
+            }, 503
         except Exception as e:
-            logger.exception("Backend status check failed")
-            return {"status": "Unavailable", "error": str(e)}, 503
+            logger.exception("BPM backend status check failed")
+            return {
+                "status_code": 503,
+                "status": "Unavailable",
+                "errors": [{"code": "BACKEND_ERROR", "message": str(e)}],
+            }, 503
 
-        return {"status": "OK", "error": ""}, 200
+        # Return a successful status
+        return {"status_code": 200, "status": "OK", "errors": []}, 200
