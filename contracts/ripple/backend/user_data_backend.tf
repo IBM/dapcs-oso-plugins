@@ -14,8 +14,9 @@
 // limitations under the License.
 
 resource "local_file" "ibm_cfg" {
-  content = local.ibm_cfg
-  filename = "podman-play/ibm.cfg"
+  for_each        = { for v in local.resolved_vaults : tostring(v.num) => v }
+  content         = local.ibm_cfg
+  filename        = "podman-play/ibm${each.value.num}.cfg"
   file_permission = "0664"
 }
 
@@ -38,19 +39,40 @@ resource "local_file" "grep_client_cert" {
 }
 
 
+locals {
+  # Assign each vault a 1-based label (num) and a unique gRPC port (10001, 10002, ...).
+  resolved_vaults = [
+    for i, vault_id in var.VAULT_IDS : {
+      vault_id        = vault_id
+      num             = i + 1
+      kms_port        = 11000 + i
+      grpc_port       = 10001 + i
+      bridge_port      = 9123 + i
+      bridge_host_port = 9100 + i
+      platform        = "kms"
+    }
+  ]
+
+  # Render one ConfigMap per vault from supervisord.tftpl; injected at the top of backend.yml.
+  supervisord_configmaps = templatefile(
+    "${path.module}/supervisord.tftpl",
+    { tpl = { vaults = local.resolved_vaults } }
+  )
+}
+
 resource "local_file" "podman-play" {
   content = templatefile(
     "${path.module}/backend.yml.tftpl",
     { tpl = {
+      supervisord_configmaps = local.supervisord_configmaps,
       backend_plugin_image = var.BACKEND_PLUGIN_IMAGE,
       cold_bridge_image = var.COLD_BRIDGE_IMAGE,
       cold_vault_image = var.COLD_VAULT_IMAGE,
       kmsconnect_image = var.KMSCONNECT_IMAGE,
-      vault_id = var.VAULT_ID,
+      vaults = local.resolved_vaults,
       passphrase = var.PASSPHRASE,
       notary_messaging_public_key = var.NOTARY_MESSAGING_PUBLIC_KEY,
-      seed = var.SEED,
-      cold_bridge_endpoint = var.COLD_BRIDGE_ENDPOINT,
+      seed = var.OSOENCRYPTIONPASS,
       enable_ep11server = var.INTERNAL_GREP11,
       crypto_pass_enable = var.CRYPTO_PASSTHROUGH_ENABLEMENT,
       grep11_image = var.GREP11_IMAGE,
@@ -81,8 +103,8 @@ resource "null_resource" "crypto_deps" {
   ]
 }
 
-# archive of the folder containing docker-compose file. This folder could create additional resources such as files
-# to be mounted into containers, environment files etc. This is why all of these files get bundled in a tgz file (base64 encoded)
+# archive of the folder containing the podman-play pod YAML and supporting files (ibm.cfg, certs, etc.)
+# All files get bundled into a tgz (base64 encoded).
 resource "hpcr_tgz" "workload" {
   depends_on = [local_file.podman-play]
   folder = "podman-play"

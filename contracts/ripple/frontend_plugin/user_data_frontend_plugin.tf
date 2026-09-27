@@ -17,18 +17,21 @@ resource "local_file" "frontend_plugin_podman_play" {
   content = templatefile(
     "${path.module}/frontend_plugin.yml.tftpl",
     { tpl = {
-      image             = var.FRONTEND_PLUGIN_IMAGE,
-      SK                = var.SK,
-      VAULTID           = var.VAULT_ID,
-      HMZ_AUTH_HOSTNAME = var.HMZ_AUTH_HOSTNAME,
-      HMZ_API_HOSTNAME  = var.HMZ_API_HOSTNAME,
-      ROOTCERT          = var.ROOTCERT,
-      SEED              = var.SEED,
-      TOKEN_EXP         = var.TOKEN_EXP
+      image                = var.FRONTEND_PLUGIN_IMAGE,
+      HMZ_USER_SK          = var.HMZ_USER_SK,
+      VAULT_IDS            = join(" ", var.VAULT_IDS),
+      HMZ_AUTH_HOSTNAME    = var.HMZ_AUTH_HOSTNAME,
+      HMZ_AUTH_PATH        = var.HMZ_AUTH_PATH,
+      HMZ_AUTH_CUSTOMERID  = var.HMZ_AUTH_CUSTOMERID,
+      HMZ_API_HOSTNAME     = var.HMZ_API_HOSTNAME,
+      ROOTCERT             = var.ROOTCERT,
+      SEED                 = var.SEED,
+      TOKEN_EXP            = var.TOKEN_EXP,
+      BATCH_UPLOAD_SIZE    = var.BATCH_UPLOAD_SIZE,
     } },
   )
   filename        = "frontend_plugin/play.yml"
-  file_permission = "0664"
+  file_permission = "0600"
 }
 
 # archive of the folder containing docker-compose file. This folder could create additional resources such as files
@@ -38,6 +41,25 @@ resource "hpcr_tgz" "frontend_plugin_workload" {
     local_file.frontend_plugin_podman_play
   ]
   folder = "frontend_plugin"
+}
+
+# Remove the plaintext play.yml after it has been archived to avoid leaving
+# the private key (HMZ_USER_SK) in a world-readable intermediate file on disk.
+resource "null_resource" "cleanup_frontend_play" {
+  depends_on = [hpcr_tgz.frontend_plugin_workload]
+
+  triggers = {
+    play_content = local_file.frontend_plugin_podman_play.content
+  }
+
+  provisioner "local-exec" {
+    command = "rm -f frontend_plugin/play.yml"
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = "rm -f frontend_plugin/play.yml"
+  }
 }
 
 
@@ -62,11 +84,11 @@ resource "local_file" "frontend_plugin_contract" {
   count           = var.DEBUG ? 1 : 0
   content         = yamlencode(local.frontend_plugin_workload)
   filename        = "frontend_plugin_contract.yml"
-  file_permission = "0664"
+  file_permission = "0600"
 }
 
 resource "local_file" "frontend_plugin_contract_encrypted" {
   content         = hpcr_text_encrypted.frontend_plugin_contract.rendered
   filename        = "frontend_plugin.yml"
-  file_permission = "0664"
+  file_permission = "0600"
 }

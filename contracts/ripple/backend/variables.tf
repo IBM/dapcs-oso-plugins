@@ -20,10 +20,10 @@ variable "PREFIX" {
 variable "DEBUG" {
   type        = bool
   description = "Create debug contracts, plaintext"
-  default     = false
+  default     = true
 }
 
-variable "SEED" {
+variable "OSOENCRYPTIONPASS" {
   type        = string
   description = "Encrypt data through the iteration pipeline (should be the same value as frontend plugin)"
   default     = ""
@@ -32,12 +32,6 @@ variable "SEED" {
 variable "BACKEND_PLUGIN_IMAGE" {
   type = string
   description = "Backend plugin image containing registry"
-}
-
-variable "COLD_BRIDGE_ENDPOINT" {
-  type        = string
-  description = "Cold bridge endpoint URL for the cold bridge service"
-  default     = "http://localhost:8080"
 }
 
 variable "COLD_BRIDGE_IMAGE" {
@@ -55,16 +49,23 @@ variable "KMSCONNECT_IMAGE" {
   description = "KMS connect image containing registry"
 }
 
-variable "VAULT_ID" {
-  type = string
-  description = "Vault ID"
+variable "VAULT_IDS" {
+  type        = list(string)
+  description = "List of vault IDs. Supports up to 100 vaults."
+  default     = []
+
+  validation {
+    condition     = length(var.VAULT_IDS) <= 100
+    error_message = "VAULT_IDS must contain at most 100 vaults."
+  }
 }
 
 variable "PASSPHRASE" {
-  type = string
-  default = "{{EMPTY}}"
-  description = "Required to enable plugin to view content within a JSON format"
+  type        = string
+  description = "Passphrase for cold-bridge. Use '{{EMPTY}}' so that the bridge data is not cyphered and can be managed by OSO"
+  default     = "{{EMPTY}}"
 }
+
 
 variable "NOTARY_MESSAGING_PUBLIC_KEY" {
   type = string
@@ -106,29 +107,6 @@ variable "GREP11_CLIENT_CERT" {
   type = string
   description = "GREP11 client certificate"
   default = ""
-}
-
-variable "VOLUME_NAME" {
-  type = string
-  description = "Volume name"
-  default = "vault_vol"
-}
-
-variable "WORKLOAD_VOL_SEED" {
-  type = string
-  description = "Workload volume encryption seed"
-}
-
-variable "WORKLOAD_VOLUME_PREV_SEED" {
-  type        = string
-  description = "Previous Workload Seed phrase for conductor disk volume."
-  default     = ""
-}
-
-variable "PORT" {
-  type        = string
-  description = "External port number for api"
-  default     = "4000"
 }
 
 variable "STATIC_IP" {
@@ -199,3 +177,4 @@ variable "CRYPTO_PASSTHROUGH_ENABLEMENT" {
   default = true
   description = "Crypto passthrough enablement configuration"
 }
+

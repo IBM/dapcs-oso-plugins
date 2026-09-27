@@ -1,23 +1,20 @@
-# Copyright (c) 2025 IBM Corp.
-# All rights reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Licensed Materials - Property of IBM
 #
-# http://www.apache.org/licenses/LICENSE-2.0
+# (c) Copyright IBM Corp. 2024
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# The source code for this program is not published or otherwise
+# divested of its trade secrets, irrespective of what has been
+# deposited with the U.S. Copyright Office
+#
 
 import logging
 import sys
 
 from flask import abort, current_app, request
 from flask_restx import Namespace, Resource, fields
+
+from oso_ripple_plugins.common import errors
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -37,8 +34,12 @@ documents_model = api.model(
     },
 )
 
-component_status_model = api.model(
-    "ComponentStatus", {"status": fields.String(), "error": fields.String()}
+error_model = api.model(
+    "Error",
+    {
+        "code": fields.String(description="Error code", required=True),
+        "message": fields.String(description="Error message", required=True),
+    },
 )
 
 
@@ -84,6 +85,9 @@ class Upload(Resource):
             logger.info(f"Processing {len(documents)} documents for upload")
             if len(documents) > 0:
                 current_app.fpm.bulk_upload(documents)
+        except errors.BroadcastError as e:
+            logger.error(f"Broadcast incomplete: {e}")
+            abort(503)
         except Exception as e:
             logger.exception(e)
             abort(500)
@@ -93,17 +97,33 @@ class Upload(Resource):
 
 @api.route("/status", methods=["GET"])
 class Status(Resource):
+    # Define the component status model
     component_status_model = api.model(
-        "ComponentStatus", {"status": fields.String(), "error": fields.String()}
+        "ComponentStatus",
+        {
+            "status_code": fields.Integer(description="HTTP status code"),
+            "status": fields.String(description="Human readable message"),
+            "errors": fields.List(
+                fields.Nested(error_model), default=[], description="List of errors"
+            ),
+        },
     )
 
     @api.response(code=200, description="Success", model=component_status_model)
+    @api.response(code=401, description="Unauthorized", model=error_model)
+    @api.response(code=403, description="Forbidden", model=error_model)
     @api.response(code=503, description="Unavailable", model=component_status_model)
     def get(self):
+        """Return the component status"""
         try:
             current_app.fpm.backend_status()
         except Exception as e:
-            logger.exception(e)
-            abort(503)
+            logger.exception("Backend status check failed")
+            return {
+                "status_code": 503,
+                "status": "Unavailable",
+                "errors": [{"code": "BACKEND_ERROR", "message": str(e)}],
+            }, 503
 
-        return {"status": "OK"}, 200
+        # Return a successful status
+        return {"status_code": 200, "status": "OK", "errors": []}, 200

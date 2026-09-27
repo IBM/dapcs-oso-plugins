@@ -13,10 +13,5 @@ Plugin code: [/ripple-plugin/](./ripple-plugin)
 
 Contract configuration: [/contracts/ripple/](./contracts/ripple)
 
-### IBM Digital Asset Haven
-Plugin code: [/ibm-digital-asset-haven-plugin/](./ibm-digital-asset-haven-plugin)
-
-Contract configuration: [/contracts/ibm-digital-asset-haven/](./contracts/ibm-digital-asset-haven)
-
 ## License
 [Apache-2.0](./LICENSE)

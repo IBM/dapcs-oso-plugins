@@ -23,7 +23,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ibm-ripple-oso-plugins"
 dynamic = ["version"]
-requires-python = ">= 3.12"
+requires-python = ">= 3.13"
 
 
 [project.optional-dependencies]
