@@ -34,7 +34,7 @@ RUN microdnf --assumeyes \
         --enablerepo=ubi-${RELEASEVER}-codeready-builder-rpms \
         install \
             tar gzip make gcc patch findutils diffutils \
-            openssl-devel pcre2-devel zlib-devel \
+            libxslt openssl-devel pcre2-devel zlib-devel \
             rpm-build rpmlint rpmdevtools \
     ; microdnf --assumeyes clean all
 
