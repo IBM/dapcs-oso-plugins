@@ -48,3 +48,15 @@ variable "REFRESH_TOKEN" {
   type        = string
   description = "Fireblocks refresh token (in base64)"
 }
+
+variable "ADMIN_CA_CERT" {
+  type        = string
+  description = "CA certificate (PEM) that issues admin client certificates for POST /generate. Empty disables admin access"
+  default     = ""
+}
+
+variable "ADMIN_FINGERPRINTS" {
+  type        = list(string)
+  description = "Fingerprints (SHA256:...) of admin client certificates allowed to call POST /generate"
+  default     = []
+}

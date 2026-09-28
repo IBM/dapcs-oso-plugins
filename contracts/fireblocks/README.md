@@ -55,6 +55,8 @@ OSO uses the encrypted workload to deploy the frontend (LPAR1) components during
     - `FIREBLOCKS_AGENT_IMAGE` - Fireblocks agent image with sha256 digest
     - `MOBILE_GATEWAY_URL` - Mobile gateway url endpoint (default: https://mobile-api.fireblocks.io)
     - `REFRESH_TOKEN` - Refresh token for the API user (base64 encoded JSON)
+    - `ADMIN_CA_CERT` - (Optional) CA certificate (PEM) that issues admin client certificates allowed to generate documents (e.g. MK rotation) via `POST /api/frontend/v1alpha1/generate`
+    - `ADMIN_FINGERPRINTS` - (Optional) Fingerprints of those admin certificates, e.g. `["SHA256:..."]`. Both must be set; the certificate must be issued directly by `ADMIN_CA_CERT`
 1. To generate the encrypted workload, change to the `contracts` directory and run:
 
     `./create-frontend.sh`

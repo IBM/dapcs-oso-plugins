@@ -22,6 +22,8 @@ resource "local_file" "frontend_podman_play" {
       fbagent_image = var.FIREBLOCKS_AGENT_IMAGE,
       mobile_gateway_url = var.MOBILE_GATEWAY_URL,
       refresh_token = var.REFRESH_TOKEN,
+      admin_ca_cert = var.ADMIN_CA_CERT,
+      admin_fingerprints = var.ADMIN_FINGERPRINTS,
     } },
   )
   filename = "frontend/podman-play.yml"
