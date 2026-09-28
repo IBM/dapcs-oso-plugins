@@ -45,12 +45,14 @@ variable "VOLUME_NAME" {
 variable "WORKLOAD_VOL_SEED" {
   type        = string
   description = "Workload volume encryption seed"
+  sensitive   = true
 }
 
 variable "WORKLOAD_VOLUME_PREV_SEED" {
   type        = string
   description = "Previous Workload Seed phrase for conductor disk volume."
   default     = ""
+  sensitive   = true
 }
 
 variable "INTERNAL_GREP11" {
@@ -104,7 +106,8 @@ variable "C16_CLIENT_LOGLEVEL" {
 variable "C16_CLIENT_KEY" {
   type        = string
   description = "Crypto appliance client key"
-  default = ""
+  default     = ""
+  sensitive   = true
 }
 
 variable "C16_CLIENT_CERT" {
@@ -140,9 +143,10 @@ variable "GREP11_CA" {
 }
 
 variable "GREP11_CLIENT_KEY" {
-  type = string
+  type      = string
   description = "GREP11 client key PKCS8 (PEM)"
-  default = ""
+  default   = ""
+  sensitive = true
 }
 
 variable "GREP11_CLIENT_CERT" {
