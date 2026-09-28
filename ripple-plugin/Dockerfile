@@ -91,31 +91,35 @@ ARG RELEASEVER
 ARG NGINX_VERSION
 ARG NGINX_PKG_RELEASE
 
-RUN mkdir /installroot \
-    ; dnf --assumeyes \
+RUN --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum.repos.d/centos.repo,target=/etc/yum.repos.d/centos.repo \
+    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial,target=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial \
+    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum/vars/stream,target=/etc/yum/vars/stream \
+    rpm --install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
+    && mkdir /installroot \
+    && dnf --assumeyes \
         --setopt=install_weak_deps=0 \
         --setopt=keepcache=0 \
         --setopt=tsflags=nodocs \
         --disablerepo='*' \
         --enablerepo=ubi-${RELEASEVER}-baseos-rpms \
         --enablerepo=ubi-${RELEASEVER}-appstream-rpms \
+        --enablerepo=epel \
         --installroot=/installroot \
         --releasever=${RELEASEVER} \
         install \
             python3.13 gettext findutils \
             libstdc++ openssl pcre2 zlib \
             procps-ng shadow-utils tzdata \
-    ; dnf --assumeyes clean all --installroot=/installroot
+    && dnf --assumeyes clean all --installroot=/installroot \
+    && test -x /installroot/usr/bin/python3.13
 
 COPY --from=nginx-build /project/rpm/RPMS/*/*.rpm /RPMS/
-RUN dnf --assumeyes \
-        --setopt=install_weak_deps=0 \
-        --setopt=keepcache=0 \
-        --disablerepo='*' \
-        --installroot=/installroot \
-        --releasever=${RELEASEVER} \
-        install \
-            /RPMS/nginx-${NGINX_VERSION}-${NGINX_PKG_RELEASE%~*}.el${RELEASEVER}.ngx.*.rpm
+RUN rpm --install \
+        --root=/installroot \
+        --nodeps \
+        --noscripts \
+        --excludedocs \
+        /RPMS/nginx-${NGINX_VERSION}-${NGINX_PKG_RELEASE%~*}.el${RELEASEVER}.ngx.*.rpm
 
 
 # ---- Micro runtime base ----
