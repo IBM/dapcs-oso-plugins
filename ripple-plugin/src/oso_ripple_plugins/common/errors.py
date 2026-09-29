@@ -20,6 +20,19 @@ class ConfigError(Exception):
     pass
 
 
+class SigningInProgress(Exception):
+    """Exception raised while the cold bridge still has pending sign operations"""
+
+    pass
+
+
+class BroadcastError(Exception):
+    """Exception raised when signed documents could not be uploaded to the
+    custody API after exhausting retries"""
+
+    pass
+
+
 class NetworkError(Exception):
     """Raised for network-level failures (timeout, connection error)"""
 

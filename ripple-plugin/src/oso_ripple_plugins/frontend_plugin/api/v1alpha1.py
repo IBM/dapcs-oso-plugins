@@ -14,6 +14,8 @@ import sys
 from flask import abort, current_app, request
 from flask_restx import Namespace, Resource, fields
 
+from oso_ripple_plugins.common import errors
+
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -83,6 +85,9 @@ class Upload(Resource):
             logger.info(f"Processing {len(documents)} documents for upload")
             if len(documents) > 0:
                 current_app.fpm.bulk_upload(documents)
+        except errors.BroadcastError as e:
+            logger.error(f"Broadcast incomplete: {e}")
+            abort(503)
         except Exception as e:
             logger.exception(e)
             abort(500)
@@ -92,11 +97,15 @@ class Upload(Resource):
 
 @api.route("/status", methods=["GET"])
 class Status(Resource):
+    # Define the component status model
     component_status_model = api.model(
         "ComponentStatus",
         {
-            "status": fields.String(description="Human readable status"),
-            "error": fields.String(description="Error detail, empty string on success"),
+            "status_code": fields.Integer(description="HTTP status code"),
+            "status": fields.String(description="Human readable message"),
+            "errors": fields.List(
+                fields.Nested(error_model), default=[], description="List of errors"
+            ),
         },
     )
 
@@ -110,6 +119,11 @@ class Status(Resource):
             current_app.fpm.backend_status()
         except Exception as e:
             logger.exception("Backend status check failed")
-            return {"status": "Unavailable", "error": str(e)}, 503
+            return {
+                "status_code": 503,
+                "status": "Unavailable",
+                "errors": [{"code": "BACKEND_ERROR", "message": str(e)}],
+            }, 503
 
-        return {"status": "OK", "error": ""}, 200
+        # Return a successful status
+        return {"status_code": 200, "status": "OK", "errors": []}, 200
