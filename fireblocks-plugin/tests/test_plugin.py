@@ -26,10 +26,7 @@ from fb.types import MessagesRequest, MessagesStatusRequest, MessagesStatusRespo
 
 from oso.framework.data.types import V1_3
 from oso.framework.plugin import current_oso_plugin_app
-from oso.framework.plugin.document.mk_rotation import (
-    MkRotationDoneMetadata,
-    MkRotationMetadata,
-)
+from oso.framework.plugin.document.mk_rotation import MkRotationMetadata
 from oso.framework.plugin.addons.signing_server._key import KeyType
 
 
@@ -174,13 +171,13 @@ def test_rewrap(mode, client):
 
     done = fb_plugin.rewrap(rotation_id="rot-1")
 
-    assert done.rotation_id == "rot-1"
+    assert done.status == "success"
     assert sorted(done.rewrapped_key_ids) == sorted(all_keys)
 
 
 @pytest.mark.parametrize("mode", ["backend"])
 def test_mk_rotation_document_flow(mode, client):
-    """mk_rotation arriving via OSO drives FBPlugin.rewrap() and returns done."""
+    """mk_rotation arriving via OSO drives FBPlugin.rewrap() and returns the result."""
     headers = {"X-TEST-SSL-VERIFY": "True", "X-TEST-SSL-FINGERPRINT": "VALID"}
     fb_plugin = current_oso_plugin_app()
     all_keys = fb_plugin.signing_server.list_keys(
@@ -188,9 +185,9 @@ def test_mk_rotation_document_flow(mode, client):
     ) + fb_plugin.signing_server.list_keys(KeyType.ED25519)
 
     rotation = V1_3.Document(
-        id="mk_rotation_rot-2",
+        id="rot-2",
         content="",
-        metadata=MkRotationMetadata(rotation_id="rot-2").model_dump(mode="json"),
+        metadata=MkRotationMetadata().model_dump(mode="json"),
     )
     response = client.post(
         f"/api/{mode}/v1alpha1/documents",
@@ -203,8 +200,9 @@ def test_mk_rotation_document_flow(mode, client):
 
     response = client.get(f"/api/{mode}/v1alpha1/documents", headers=headers)
     docs = V1_3.DocumentList.model_validate_json(response.data)
-    assert docs.documents[0].id == "mk_rotation_done_rot-2"
-    done = MkRotationDoneMetadata.model_validate_json(docs.documents[0].metadata)
+    assert docs.documents[0].id == "rot-2"
+    done = MkRotationMetadata.model_validate_json(docs.documents[0].metadata)
+    assert done.status == "success"
     assert sorted(done.rewrapped_key_ids) == sorted(all_keys)
 
 
@@ -315,16 +313,17 @@ def test_backend_status(mode, client):
 
 
 @pytest.mark.parametrize("mode", ["frontend"])
-def test_mk_rotation_put_frontend(mode, client):
-    """PUT /documents on the frontend queues mk_rotation for the backend."""
+def test_mk_rotation_generate_frontend(mode, client):
+    """POST /generate on the frontend queues mk_rotation for the backend."""
     headers = {"X-TEST-SSL-VERIFY": "True", "X-TEST-SSL-FINGERPRINT": "VALID"}
-    response = client.put(
-        f"/api/{mode}/v1alpha1/documents",
-        json={"doc_type": "mk_rotation", "key": "rot-4"},
+    response = client.post(
+        f"/api/{mode}/v1alpha1/generate",
+        json={"doc_type": "mk_rotation"},
         headers=headers,
     )
     assert response.status_code == 200
+    doc_id = response.get_json()["id"]
 
     response = client.get(f"/api/{mode}/v1alpha1/documents", headers=headers)
     docs = V1_3.DocumentList.model_validate_json(response.data)
-    assert [d.id for d in docs.documents] == ["mk_rotation_rot-4"]
+    assert [d.id for d in docs.documents] == [doc_id]

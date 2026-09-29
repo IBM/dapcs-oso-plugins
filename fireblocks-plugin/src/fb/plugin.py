@@ -31,7 +31,7 @@ from oso.framework.data.types import V1_3
 from oso.framework.plugin.base import PluginProtocol
 from oso.framework.plugin import current_oso_plugin, current_oso_plugin_app
 from oso.framework.plugin.addons.signing_server import SigningServerAddon, KeyType
-from oso.framework.plugin.document.mk_rotation import MkRotationDoneMetadata
+from oso.framework.plugin.document.mk_rotation import MkRotationMetadata
 
 
 from .utils import log_error, model_dump_json
@@ -118,7 +118,7 @@ class FBPlugin(PluginProtocol):
 
         return signing_server
 
-    def rewrap(self, rotation_id: str) -> MkRotationDoneMetadata:
+    def rewrap(self, rotation_id: str) -> MkRotationMetadata:
         """Rewrap all keystore keys after an HSM master-key rotation.
 
         Uses the addon directly: ``self.signing_server`` would first top up
@@ -131,9 +131,7 @@ class FBPlugin(PluginProtocol):
         rewrapped_key_ids = signing_server.rewrap_keys(rotation_id)
         # Signing failures from the rotation window no longer apply.
         self.signing_error = None
-        return MkRotationDoneMetadata(
-            rotation_id=rotation_id, rewrapped_key_ids=rewrapped_key_ids
-        )
+        return MkRotationMetadata(status="success", rewrapped_key_ids=rewrapped_key_ids)
 
     @cached_property
     def mode(self) -> Literal["frontend", "backend"]:
@@ -279,7 +277,7 @@ class FBPlugin(PluginProtocol):
     def to_isv(self, oso: V1_3.DocumentList) -> list[str]:
         """Convert OSO document list to ISV format.
 
-        The framework strips mk_rotation / mk_rotation_done documents before
+        The framework strips mk_rotation documents before
         this method is called, so the plugin only sees normal signing documents.
         """
         logger.debug(f"entering to_isv: {oso=}")
