@@ -13,6 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+check "encryption_pass_warning" {
+  assert {
+    condition     = var.OSOENCRYPTIONPASS != ""
+    error_message = "WARNING: OSOENCRYPTIONPASS is not set in terraform.tfvars. Documents will transit the conductor pipeline without AES-GCM encryption or HMAC-SHA256 integrity protection."
+  }
+}
+
 resource "local_file" "frontend_plugin_podman_play" {
   content = templatefile(
     "${path.module}/frontend_plugin.yml.tftpl",
@@ -25,7 +32,7 @@ resource "local_file" "frontend_plugin_podman_play" {
       HMZ_AUTH_CUSTOMERID  = var.HMZ_AUTH_CUSTOMERID,
       HMZ_API_HOSTNAME     = var.HMZ_API_HOSTNAME,
       ROOTCERT             = var.ROOTCERT,
-      SEED                 = var.SEED,
+      OSOENCRYPTIONPASS    = var.OSOENCRYPTIONPASS,
       TOKEN_EXP            = var.TOKEN_EXP,
       BATCH_UPLOAD_SIZE    = var.BATCH_UPLOAD_SIZE,
     } },

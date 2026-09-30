@@ -63,7 +63,7 @@ def rootcert(request, monkeypatch):
 
 @pytest.fixture(scope="function")
 def seed(request, monkeypatch):
-    monkeypatch.setenv("SEED", request.param)
+    monkeypatch.setenv("OSOENCRYPTIONPASS", request.param)
     yield request.param
 
 
