@@ -29,6 +29,7 @@ rm -f podman-play/cert/client-key.pem \
       podman-play/srv1/grep11server-key.pem \
       podman-play/cfg/c16client-key.pem
 ${CP} -rf backend.yml ../output/backend/user-data
+rm -f terraform.tfstate terraform.tfstate.backup
 popd || exit 1
 
 popd || exit 1
