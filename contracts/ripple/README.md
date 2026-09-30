@@ -86,7 +86,6 @@ The encrypted workload will be used within OSO when deploying along with the GRE
     - `KMSCONNECT_IMAGE` - KMS connect image with sha256 (see above)
     - `VAULT_ID` - Vault ID used for cold vault operations
     - `NOTARY_MESSAGING_PUBLIC_KEY` - Notary messaging public key after genesis
-    - `WORKLOAD_VOL_SEED` - Workload volume encryption seed
     - `CRYPTO_PASSTHROUGH_ENABLEMENT` - To enable crypto passthrough
     - `INTERNAL_GREP11` - boolean value for to bringup grep11 interanally or externally
     - `GREP11_IMAGE` - grep11 image with with sha256
