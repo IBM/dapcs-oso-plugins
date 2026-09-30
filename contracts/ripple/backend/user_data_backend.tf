@@ -13,6 +13,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+check "encryption_pass_warning" {
+  assert {
+    condition     = var.OSOENCRYPTIONPASS != ""
+    error_message = "WARNING: OSOENCRYPTIONPASS is not set in terraform.tfvars. Documents will transit the conductor pipeline without AES-GCM encryption or HMAC-SHA256 integrity protection."
+  }
+}
+
+check "vault_ids_warning" {
+  assert {
+    condition     = length(var.VAULT_IDS) > 0
+    error_message = "WARNING: VAULT_IDS list is empty. No cold-bridge or vault containers will be generated in the backend pod."
+  }
+}
+
 resource "local_file" "ibm_cfg" {
   for_each        = { for v in local.resolved_vaults : tostring(v.num) => v }
   content         = local.ibm_cfg
