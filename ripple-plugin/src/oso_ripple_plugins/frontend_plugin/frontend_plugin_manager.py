@@ -391,7 +391,7 @@ class FrontendPluginManager:
             )
 
             empty_content = {
-                "vaultId": vault_json.get("vaultId", vaultid),
+                "vaultId": vaultid,
                 "accounts": [],
                 "transactions": [],
                 "manifests": [],
