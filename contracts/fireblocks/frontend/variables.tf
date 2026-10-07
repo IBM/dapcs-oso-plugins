@@ -51,7 +51,7 @@ variable "REFRESH_TOKEN" {
 
 variable "ADMIN_CA_CERT" {
   type        = string
-  description = "CA certificate (PEM) that issues admin client certificates for POST /generate. Empty disables admin access"
+  description = "CA certificate (PEM) the proxy trusts for admin client certificates (POST /generate). Empty disables admin access"
   default     = ""
 }
 

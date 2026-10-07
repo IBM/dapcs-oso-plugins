@@ -20,6 +20,9 @@ from functools import cached_property
 import sys
 import json
 import logging
+import os
+import pathlib
+import re
 
 from typing import List, cast, Literal
 
@@ -31,7 +34,6 @@ from oso.framework.data.types import V1_3
 from oso.framework.plugin.base import PluginProtocol
 from oso.framework.plugin import current_oso_plugin, current_oso_plugin_app
 from oso.framework.plugin.addons.signing_server import SigningServerAddon, KeyType
-from oso.framework.plugin.document.mk_rotation import MkRotationMetadata
 
 
 from .utils import log_error, model_dump_json
@@ -118,7 +120,7 @@ class FBPlugin(PluginProtocol):
 
         return signing_server
 
-    def rewrap(self, rotation_id: str) -> MkRotationMetadata:
+    def rewrap(self, rotation_id: str) -> List[str]:
         """Rewrap all keystore keys after an HSM master-key rotation.
 
         Uses the addon directly: ``self.signing_server`` would first top up
@@ -128,10 +130,60 @@ class FBPlugin(PluginProtocol):
         signing_server = cast(
             SigningServerAddon, current_oso_plugin().addons["SigningServer"]
         )
-        rewrapped_key_ids = signing_server.rewrap_keys(rotation_id)
-        # Signing failures from the rotation window no longer apply.
+        rewrapped_key_ids = self._rewrap_keystore(signing_server, rotation_id)
         self.signing_error = None
-        return MkRotationMetadata(status="success", rewrapped_key_ids=rewrapped_key_ids)
+        return rewrapped_key_ids
+
+    def _rewrap_keystore(
+        self, signing_server: SigningServerAddon, rotation_id: str
+    ) -> List[str]:
+        """Re-wrap every private-key blob in the keystore; safe to retry.
+
+        Each original blob is kept as ``<key>.<rotation_id>.orig`` so a retry
+        rewraps the original, never an already-rewrapped blob. A marker file
+        records a finished rotation. Returns the rewrapped key IDs.
+        """
+        # rotation_id becomes part of keystore file names: no path separators.
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", rotation_id):
+            raise ValueError(f"Invalid rotation_id {rotation_id!r}")
+
+        keystore = self._keystore_path()
+        marker = keystore / ".mk_rotation" / f"{rotation_id}.json"
+        if marker.exists():
+            logger.info(f"Rotation '{rotation_id}' already rewrapped")
+            return json.loads(marker.read_text())
+
+        rewrapped_ids: List[str] = []
+        for key_type in KeyType:
+            for key_id in signing_server.list_keys(key_type):
+                key_file = keystore / key_type.name / f"{key_id}.key"
+                orig = key_file.with_name(f"{key_file.name}.{rotation_id}.orig")
+                if not orig.exists():
+                    _atomic_write(orig, key_file.read_bytes())
+                logger.info(f"Rewrapping key '{key_id}'")
+                _atomic_write(key_file, signing_server.rewrap_key(orig.read_bytes()))
+                rewrapped_ids.append(key_id)
+
+        marker.parent.mkdir(exist_ok=True)
+        _atomic_write(marker, json.dumps(rewrapped_ids).encode())
+
+        # Earlier rotations are superseded; keep only this rotation's backups.
+        for old in keystore.glob("*/*.key.*.orig"):
+            if old.name.split(".", 2)[2] != f"{rotation_id}.orig":
+                old.unlink()
+
+        logger.info(f"Rewrap completed: {len(rewrapped_ids)} key(s)")
+        return rewrapped_ids
+
+    @staticmethod
+    def _keystore_path() -> pathlib.Path:
+        """Keystore root from the SigningServer addon config."""
+        addon_cfg = next(
+            a
+            for a in current_oso_plugin().config.addons
+            if a.type.NAME == "SigningServer"
+        )
+        return pathlib.Path(addon_cfg.keystore_path)
 
     @cached_property
     def mode(self) -> Literal["frontend", "backend"]:
@@ -399,3 +451,19 @@ def infer_response_type(message_type: RequestType) -> ResponseType:
 
         case RequestType.KEY_LINK_TX_SIGN_REQUEST:
             return ResponseType.KEY_LINK_TX_SIGN_RESPONSE
+
+
+def _atomic_write(path: pathlib.Path, data: bytes) -> None:
+    """Replace ``path`` with ``data`` so a crash never leaves it half-written."""
+    tmp = path.with_name(f"{path.name}.tmp")
+    with open(tmp, "wb") as f:
+        f.write(data)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+    # Persist the rename itself, not just the file contents.
+    dir_fd = os.open(path.parent, os.O_RDONLY)
+    try:
+        os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)

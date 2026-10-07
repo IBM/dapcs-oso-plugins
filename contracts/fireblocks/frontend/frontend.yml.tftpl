@@ -23,10 +23,11 @@ spec:
           value: "fb.plugin:FBPlugin"
         - name: plugin__mode
           value: "frontend"
-        - name: PLUGIN__ADMIN_CA
-          value: ${jsonencode(tpl.admin_ca_cert)}
-        - name: PLUGIN__ADMIN_ALLOWLIST
-          value: ${jsonencode(jsonencode(tpl.admin_fingerprints))}
+        # Second mtls parser: its allowlist merges with the config map's (index 0)
+        - name: AUTH__PARSERS__1__TYPE
+          value: "oso.framework.auth.mtls"
+        - name: AUTH__PARSERS__1__ALLOWLIST
+          value: ${jsonencode(jsonencode({ admin = tpl.admin_fingerprints }))}
     - name: frontend_plugin_proxy
       image: ${tpl.plugin_image}
       command:

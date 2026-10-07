@@ -169,10 +169,7 @@ def test_rewrap(mode, client):
         KeyType.SECP256K1
     ) + fb_plugin.signing_server.list_keys(KeyType.ED25519)
 
-    done = fb_plugin.rewrap(rotation_id="rot-1")
-
-    assert done.status == "success"
-    assert sorted(done.rewrapped_key_ids) == sorted(all_keys)
+    assert sorted(fb_plugin.rewrap(rotation_id="rot-1")) == sorted(all_keys)
 
 
 @pytest.mark.parametrize("mode", ["backend"])
@@ -211,10 +208,58 @@ def test_rewrap_skips_key_top_up_and_clears_signing_error(mode, client):
     fb_plugin = current_oso_plugin_app()
     fb_plugin.signing_error = True
 
-    done = fb_plugin.rewrap(rotation_id="rot-3")
-
-    assert done.rewrapped_key_ids == []  # no min_keys generated mid-rotation
+    # no min_keys generated mid-rotation
+    assert fb_plugin.rewrap(rotation_id="rot-3") == []
     assert fb_plugin.signing_error is None
+
+
+@pytest.mark.parametrize("mode", ["backend"])
+def test_rewrap_is_idempotent_and_prunes_old_backups(mode, client):
+    fb_plugin = current_oso_plugin_app()
+    ss = fb_plugin.signing_server
+    keystore = FBPlugin._keystore_path()
+    key_id = ss.list_keys(KeyType.SECP256K1)[0]
+    key_file = keystore / "SECP256K1" / f"{key_id}.key"
+    before = key_file.read_bytes()
+
+    fb_plugin.rewrap(rotation_id="r1")
+    fb_plugin.rewrap(rotation_id="r1")  # repeat: no second rewrap
+    assert key_file.read_bytes() == before + b"\xff"
+
+    fb_plugin.rewrap(rotation_id="r2")
+    assert {p.name.split(".", 2)[2] for p in keystore.glob("*/*.orig")} == {"r2.orig"}
+
+    with pytest.raises(ValueError, match="Invalid rotation_id"):
+        fb_plugin.rewrap(rotation_id="../escape")
+
+
+@pytest.mark.parametrize("mode", ["backend"])
+def test_rewrap_retry_after_partial_failure(mode, client):
+    from unittest.mock import patch
+
+    fb_plugin = current_oso_plugin_app()
+    ss = fb_plugin.signing_server
+    ids = ss.list_keys(KeyType.SECP256K1) + ss.list_keys(KeyType.ED25519)
+    files = [next(FBPlugin._keystore_path().glob(f"*/{i}.key")) for i in ids]
+    before = [f.read_bytes() for f in files]
+
+    real = ss.rewrap_key
+    calls = iter([real, RuntimeError("hsm down")])
+
+    def flaky(blob: bytes) -> bytes:
+        step = next(calls, real)
+        if isinstance(step, Exception):
+            raise step
+        return step(blob)
+
+    with patch.object(ss, "rewrap_key", flaky):
+        with pytest.raises(RuntimeError):
+            fb_plugin.rewrap(rotation_id="r")
+    assert not (FBPlugin._keystore_path() / ".mk_rotation" / "r.json").exists()
+
+    fb_plugin.rewrap(rotation_id="r")
+    assert [f.read_bytes() for f in files] == [b + b"\xff" for b in before]
+    assert not list(FBPlugin._keystore_path().glob("*/*.tmp"))
 
 
 @pytest.mark.parametrize("mode", ["backend"])
@@ -327,3 +372,63 @@ def test_mk_rotation_generate_frontend(mode, client):
     response = client.get(f"/api/{mode}/v1alpha1/documents", headers=headers)
     docs = V1_3.DocumentList.model_validate_json(response.data)
     assert [d.id for d in docs.documents] == [doc_id]
+
+
+@pytest.mark.parametrize("mode", ["frontend"])
+def test_mk_rotation_end_to_end(mode, app, monkeypatch, _setup_app):
+    """Admin -> frontend -> OSO -> backend rewrap -> OSO -> frontend done."""
+    from oso.framework.plugin import create_app
+
+    headers = {"X-TEST-SSL-VERIFY": "True", "X-TEST-SSL-FINGERPRINT": "VALID"}
+    fe = app.test_client()
+    monkeypatch.setenv("PLUGIN__MODE", "backend")
+    _setup_app()  # reload config for the backend app
+    be_app = create_app()
+    be_app.config.update({"TESTING": True})
+    be = be_app.test_client()
+
+    def ferry(src, src_mode, dst, dst_mode):
+        """What OSO does: GET from one side, POST to the other."""
+        got = src.get(f"/api/{src_mode}/v1alpha1/documents", headers=headers)
+        assert got.status_code == 200, got.data
+        posted = dst.post(
+            f"/api/{dst_mode}/v1alpha1/documents",
+            data=got.data,
+            content_type="application/json",
+            headers=headers,
+        )
+        assert posted.status_code == 200, posted.data
+        return V1_3.DocumentList.model_validate_json(got.data)
+
+    gen = fe.post(
+        "/api/frontend/v1alpha1/generate",
+        json={"doc_type": "mk_rotation"},
+        headers=headers,
+    )
+    assert gen.status_code == 200, gen.data
+    rid = gen.json["id"]
+
+    # Backend keys exist before the rotation (min_keys top-up).
+    with be_app.app_context():
+        all_keys = sum(
+            (current_oso_plugin_app().signing_server.list_keys(t) for t in KeyType),
+            [],
+        )
+
+    sent = ferry(fe, "frontend", be, "backend")
+    assert [d.id for d in sent.documents] == [rid]
+
+    back = ferry(be, "backend", fe, "frontend")
+    assert [d.id for d in back.documents] == [rid]
+    done = MkRotationMetadata.model_validate_json(back.documents[0].metadata)
+    assert done.status == "success"
+    assert sorted(done.rewrapped_key_ids) == sorted(all_keys)
+
+    # Frontend saw the reply: rotation no longer re-sent, a new one is allowed.
+    assert ferry(fe, "frontend", be, "backend").count == 0
+    again = fe.post(
+        "/api/frontend/v1alpha1/generate",
+        json={"doc_type": "mk_rotation"},
+        headers=headers,
+    )
+    assert again.status_code == 200, again.data
