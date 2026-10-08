@@ -20,6 +20,10 @@ from functools import cached_property
 import sys
 import json
 import logging
+import os
+import pathlib
+import re
+import shutil
 
 from typing import List, cast, Literal
 
@@ -92,6 +96,7 @@ class FBPlugin(PluginProtocol):
             except Exception as e:
                 logger.info("Error listing keys")
                 logger.debug(f"Error: {e}")
+                continue
 
             needed_keys = current_oso_plugin_app().Config().min_keys - len(keys)
 
@@ -102,6 +107,7 @@ class FBPlugin(PluginProtocol):
                 except Exception as e:
                     logger.info("Error generating keys")
                     logger.debug(f"Error: {e}")
+                    continue
 
                 all_keys_info.append(
                     {
@@ -114,6 +120,65 @@ class FBPlugin(PluginProtocol):
         logger.info(f"Generated Keys: '{json.dumps(all_keys_info)}'")
 
         return signing_server
+
+    def rewrap(self, mk_rotation_request_id: str) -> List[str]:
+        """Rewrap all keystore keys after an HSM master-key rotation.
+
+        Uses the addon directly: ``self.signing_server`` would first top up
+        ``min_keys`` and those fresh keys are already on the new master key.
+        """
+        logger.info(f"Rewrapping keys for MK rotation request {mk_rotation_request_id}")
+        signing_server = cast(
+            SigningServerAddon, current_oso_plugin().addons["SigningServer"]
+        )
+        rewrapped_key_ids = self._rewrap_keystore(
+            signing_server, mk_rotation_request_id
+        )
+        self.signing_error = None
+        return rewrapped_key_ids
+
+    def _rewrap_keystore(
+        self, signing_server: SigningServerAddon, mk_rotation_request_id: str
+    ) -> List[str]:
+        """Re-wrap every private-key blob in the keystore; safe to retry.
+
+        While the rotation runs, original blobs are backed up under
+        ``.mk_rotation/<mk_rotation_request_id>/`` so a retry rewraps the
+        original, never an already-rewrapped blob. The backups are deleted
+        once every key is rewrapped. Returns the rewrapped key IDs.
+        """
+        keystore = self._keystore_path()
+        backup = _rotation_dir(keystore, mk_rotation_request_id)
+
+        rewrapped_ids: List[str] = []
+        for key_type in KeyType:
+            for key_id in signing_server.list_keys(key_type):
+                key_path = pathlib.Path(key_type.name, f"{key_id}.key")
+                logger.info(f"Rewrapping key '{key_id}'")
+                _rewrap_key_file(signing_server, keystore / key_path, backup / key_path)
+                rewrapped_ids.append(key_id)
+
+        # Done: drop this rotation's backups and any left by a failed one.
+        # Keys are already rewrapped, so a cleanup failure must not fail it.
+        try:
+            shutil.rmtree(backup.parent)
+        except FileNotFoundError:
+            pass
+        except OSError as e:
+            logger.warning(f"Could not delete rotation backups: {e}")
+
+        logger.info(f"Rewrap completed: {len(rewrapped_ids)} key(s)")
+        return rewrapped_ids
+
+    @staticmethod
+    def _keystore_path() -> pathlib.Path:
+        """Keystore root from the SigningServer addon config."""
+        addon_cfg = next(
+            a
+            for a in current_oso_plugin().config.addons
+            if a.type.NAME == "SigningServer"
+        )
+        return pathlib.Path(addon_cfg.keystore_path)
 
     @cached_property
     def mode(self) -> Literal["frontend", "backend"]:
@@ -236,9 +301,7 @@ class FBPlugin(PluginProtocol):
                     document = V1_3.Document(
                         id=str(message.transportMetadata.requestId),
                         content=model_dump_json(message),
-                        metadata="",
                     )
-
                     docs.append(document)
 
                 self.pending_messages.clear()
@@ -250,18 +313,20 @@ class FBPlugin(PluginProtocol):
                     document = V1_3.Document(
                         id=str(message_status.requestId),
                         content=model_dump_json(message_status),
-                        metadata="",
                     )
-
                     docs.append(document)
 
                 self.signed_statuses.clear()
 
         logger.debug(f"to_oso() returning: {docs=}")
-
         return V1_3.DocumentList(documents=docs, count=len(docs))
 
     def to_isv(self, oso: V1_3.DocumentList) -> list[str]:
+        """Convert OSO document list to ISV format.
+
+        The framework strips mk_rotation documents before
+        this method is called, so the plugin only sees normal signing documents.
+        """
         logger.debug(f"entering to_isv: {oso=}")
 
         match self.mode:
@@ -269,12 +334,10 @@ class FBPlugin(PluginProtocol):
                 for doc in oso.documents:
                     try:
                         message_status = MessageStatus.model_validate_json(doc.content)
-
                     except Exception as e:
-                        logger.error("ERROR: could not validate message")
+                        logger.error("ERROR: could not validate message status")
                         logger.debug(f"Invalid doc: {doc=}, Error {e}")
                         continue
-
                     self.signed_statuses.append(message_status)
 
             case "backend":
@@ -283,19 +346,16 @@ class FBPlugin(PluginProtocol):
                         message_envelope = MessageEnvelope.model_validate_json(
                             doc.content
                         )
-
                     except Exception as e:
-                        logger.error("ERROR: could not validate message")
+                        logger.error("ERROR: could not validate message envelope")
                         logger.debug(f"Invalid doc: {doc=}, Error {e}")
                         continue
 
                     message_status = self.sign(message_envelope)
-
                     logger.debug(
                         "Appending signed message status:"
                         f" {model_dump_json(message_status)}"
                     )
-
                     self.signed_statuses.append(message_status)
 
         return ["OK"]
@@ -347,7 +407,6 @@ class FBPlugin(PluginProtocol):
         )
 
         for message_to_sign in message_envelope.message.payload.messagesToSign:
-            # TODO: Continue on error
             try:
                 signature = self.signing_server.sign(
                     key_id=message_envelope.message.payload.signingDeviceKeyId,
@@ -356,8 +415,10 @@ class FBPlugin(PluginProtocol):
 
             except Exception as e:
                 self.signing_error = True
+                message_status.status = MessageState.FAILED
                 logger.info("Error signing message")
                 logger.debug(f"Error: {e}")
+                continue
 
             signed_message = SignedMessage(
                 index=message_to_sign.index,
@@ -385,3 +446,42 @@ def infer_response_type(message_type: RequestType) -> ResponseType:
 
         case RequestType.KEY_LINK_TX_SIGN_REQUEST:
             return ResponseType.KEY_LINK_TX_SIGN_RESPONSE
+
+
+def _atomic_write(path: pathlib.Path, data: bytes) -> None:
+    """Replace ``path`` with ``data`` so a crash never leaves it half-written."""
+    tmp = path.with_name(f"{path.name}.tmp")
+    with open(tmp, "wb") as f:
+        f.write(data)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+    # Persist the rename itself, not just the file contents.
+    dir_fd = os.open(path.parent, os.O_RDONLY)
+    try:
+        os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)
+
+
+_MK_ROTATION_REQUEST_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+
+
+def _rotation_dir(keystore: pathlib.Path, mk_rotation_request_id: str) -> pathlib.Path:
+    """Backup directory for the request, after checking the ID is a safe name."""
+    # mk_rotation_request_id becomes a directory name: no path separators or "..".
+    if not _MK_ROTATION_REQUEST_ID.fullmatch(mk_rotation_request_id):
+        raise ValueError(f"Invalid mk_rotation_request_id {mk_rotation_request_id!r}")
+    return keystore / ".mk_rotation" / mk_rotation_request_id
+
+
+def _rewrap_key_file(
+    signing_server: SigningServerAddon,
+    key_file: pathlib.Path,
+    orig: pathlib.Path,
+) -> None:
+    """Back up ``key_file`` once to ``orig``, then rewrap ``orig`` into it."""
+    if not orig.exists():
+        orig.parent.mkdir(parents=True, exist_ok=True)
+        _atomic_write(orig, key_file.read_bytes())
+    _atomic_write(key_file, signing_server.rewrap_key(orig.read_bytes()))
