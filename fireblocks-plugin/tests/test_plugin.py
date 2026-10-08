@@ -169,7 +169,7 @@ def test_rewrap(mode, client):
         KeyType.SECP256K1
     ) + fb_plugin.signing_server.list_keys(KeyType.ED25519)
 
-    assert sorted(fb_plugin.rewrap(rotation_id="rot-1")) == sorted(all_keys)
+    assert sorted(fb_plugin.rewrap(mk_rotation_request_id="rot-1")) == sorted(all_keys)
 
 
 @pytest.mark.parametrize("mode", ["backend"])
@@ -209,12 +209,12 @@ def test_rewrap_skips_key_top_up_and_clears_signing_error(mode, client):
     fb_plugin.signing_error = True
 
     # no min_keys generated mid-rotation
-    assert fb_plugin.rewrap(rotation_id="rot-3") == []
+    assert fb_plugin.rewrap(mk_rotation_request_id="rot-3") == []
     assert fb_plugin.signing_error is None
 
 
 @pytest.mark.parametrize("mode", ["backend"])
-def test_rewrap_is_idempotent_and_prunes_old_backups(mode, client):
+def test_rewrap_removes_backups_when_done(mode, client):
     fb_plugin = current_oso_plugin_app()
     ss = fb_plugin.signing_server
     keystore = FBPlugin._keystore_path()
@@ -222,15 +222,12 @@ def test_rewrap_is_idempotent_and_prunes_old_backups(mode, client):
     key_file = keystore / "SECP256K1" / f"{key_id}.key"
     before = key_file.read_bytes()
 
-    fb_plugin.rewrap(rotation_id="r1")
-    fb_plugin.rewrap(rotation_id="r1")  # repeat: no second rewrap
+    fb_plugin.rewrap(mk_rotation_request_id="r1")
     assert key_file.read_bytes() == before + b"\xff"
+    assert not (keystore / ".mk_rotation").exists()  # backups removed when done
 
-    fb_plugin.rewrap(rotation_id="r2")
-    assert {p.name.split(".", 2)[2] for p in keystore.glob("*/*.orig")} == {"r2.orig"}
-
-    with pytest.raises(ValueError, match="Invalid rotation_id"):
-        fb_plugin.rewrap(rotation_id="../escape")
+    with pytest.raises(ValueError, match="Invalid mk_rotation_request_id"):
+        fb_plugin.rewrap(mk_rotation_request_id="../escape")
 
 
 @pytest.mark.parametrize("mode", ["backend"])
@@ -254,12 +251,13 @@ def test_rewrap_retry_after_partial_failure(mode, client):
 
     with patch.object(ss, "rewrap_key", flaky):
         with pytest.raises(RuntimeError):
-            fb_plugin.rewrap(rotation_id="r")
-    assert not (FBPlugin._keystore_path() / ".mk_rotation" / "r.json").exists()
+            fb_plugin.rewrap(mk_rotation_request_id="r")
+    assert (FBPlugin._keystore_path() / ".mk_rotation" / "r").exists()
 
-    fb_plugin.rewrap(rotation_id="r")
+    fb_plugin.rewrap(mk_rotation_request_id="r")
     assert [f.read_bytes() for f in files] == [b + b"\xff" for b in before]
-    assert not list(FBPlugin._keystore_path().glob("*/*.tmp"))
+    assert not list(FBPlugin._keystore_path().rglob("*.tmp"))
+    assert not (FBPlugin._keystore_path() / ".mk_rotation").exists()
 
 
 @pytest.mark.parametrize("mode", ["backend"])
