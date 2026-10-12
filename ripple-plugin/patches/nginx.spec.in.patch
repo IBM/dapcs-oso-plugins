@@ -1,0 +1,79 @@
+--- nginx.spec.in  	2026-08-28 03:06:46.024943405 +0000
++++ nginx.spec.in	2026-08-28 03:09:32.994941941 +0000
+@@ -4,11 +4,6 @@
+ %define nginx_group nginx
+ %define nginx_loggroup adm
+
+-BuildRequires: systemd
+-Requires(post): systemd
+-Requires(preun): systemd
+-Requires(postun): systemd
+-
+ %if 0%{?rhel}
+ %define _group System Environment/Daemons
+ %endif
+@@ -102,10 +97,8 @@
+ Source1: logrotate
+ Source2: nginx.conf
+ Source3: nginx.default.conf
+-Source4: nginx.service
+ Source5: nginx.upgrade.sh
+ Source6: nginx.suse.logrotate
+-Source7: nginx-debug.service
+ Source8: nginx.copyright
+ Source9: nginx.check-reload.sh
+
+@@ -181,10 +174,6 @@
+     $RPM_BUILD_ROOT%{_mandir}/man8/nginx.8
+
+ %{__mkdir} -p $RPM_BUILD_ROOT%{_unitdir}
+-%{__install} -m644 %SOURCE4 \
+-    $RPM_BUILD_ROOT%{_unitdir}/nginx.service
+-%{__install} -m644 %SOURCE7 \
+-    $RPM_BUILD_ROOT%{_unitdir}/nginx-debug.service
+ %{__mkdir} -p $RPM_BUILD_ROOT%{_libexecdir}/initscripts/legacy-actions/nginx
+ %{__install} -m755 %SOURCE5 \
+     $RPM_BUILD_ROOT%{_libexecdir}/initscripts/legacy-actions/nginx/upgrade
+@@ -238,8 +227,6 @@
+ %config(noreplace) %{_sysconfdir}/nginx/uwsgi_params
+
+ %config(noreplace) %{_sysconfdir}/logrotate.d/nginx
+-%{_unitdir}/nginx.service
+-%{_unitdir}/nginx-debug.service
+ %dir %{_libexecdir}/initscripts/legacy-actions/nginx
+ %{_libexecdir}/initscripts/legacy-actions/nginx/*
+
+@@ -265,10 +252,7 @@
+ exit 0
+
+ %post
+-# Register the nginx service
+ if [ $1 -eq 1 ]; then
+-    /usr/bin/systemctl preset nginx.service >/dev/null 2>&1 ||:
+-    /usr/bin/systemctl preset nginx-debug.service >/dev/null 2>&1 ||:
+     # print site info
+     cat <<BANNER
+ ----------------------------------------------------------------------
+@@ -305,22 +289,4 @@
+     fi
+ fi
+
+-%preun
+-if [ $1 -eq 0 ]; then
+-    /usr/bin/systemctl --no-reload disable nginx.service >/dev/null 2>&1 ||:
+-    /usr/bin/systemctl stop nginx.service >/dev/null 2>&1 ||:
+-fi
+-
+-%postun
+-/usr/bin/systemctl daemon-reload >/dev/null 2>&1 ||:
+-if [ $1 -ge 1 ]; then
+-    /sbin/service nginx status  >/dev/null 2>&1 || exit 0
+-%if 0%{?suse_version} >= 1600
+-    %{_libexecdir}/initscripts/legacy-actions/nginx/upgrade >/dev/null 2>&1 || echo \
+-%else
+-    /sbin/service nginx upgrade >/dev/null 2>&1 || echo \
+-%endif
+-        "Binary upgrade failed, please check nginx's error.log"
+-fi
+-
+ %changelog

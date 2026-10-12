@@ -90,7 +90,7 @@ spec:
         - name: COMPONENT
           value: "backend_plugin"
         - name: OSOENCRYPTIONPASS
-          value: "${tpl.seed}"
+          value: "${tpl.OSOENCRYPTIONPASS}"
         # One endpoint per vault bridge - indexed for per-vault routing
 %{ for i, vault in tpl.vaults ~}
         - name: COLD_BRIDGE_ENDPOINT__${i}

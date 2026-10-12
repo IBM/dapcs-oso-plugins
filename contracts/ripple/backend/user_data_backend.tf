@@ -13,6 +13,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+check "encryption_pass_warning" {
+  assert {
+    condition     = var.OSOENCRYPTIONPASS != ""
+    error_message = "WARNING: OSOENCRYPTIONPASS is not set in terraform.tfvars. Documents will transit the conductor pipeline without AES-GCM encryption or HMAC-SHA256 integrity protection."
+  }
+}
+
+check "vault_ids_warning" {
+  assert {
+    condition     = length(var.VAULT_IDS) > 0
+    error_message = "WARNING: VAULT_IDS list is empty. No cold-bridge or vault containers will be generated in the backend pod."
+  }
+}
+
 resource "local_file" "ibm_cfg" {
   for_each        = { for v in local.resolved_vaults : tostring(v.num) => v }
   content         = local.ibm_cfg
@@ -29,7 +43,7 @@ resource "local_file" "grep_ca" {
 resource "local_file" "grep_client_key" {
   content = var.INTERNAL_GREP11 ? tls_private_key.client_key.private_key_pem_pkcs8 : var.GREP11_CLIENT_KEY
   filename = "podman-play/cert/client-key.pem"
-  file_permission = "0664"
+  file_permission = "0600"
 }
 
 resource "local_file" "grep_client_cert" {
@@ -72,7 +86,7 @@ resource "local_file" "podman-play" {
       vaults = local.resolved_vaults,
       passphrase = var.PASSPHRASE,
       notary_messaging_public_key = var.NOTARY_MESSAGING_PUBLIC_KEY,
-      seed = var.OSOENCRYPTIONPASS,
+      OSOENCRYPTIONPASS = var.OSOENCRYPTIONPASS,
       enable_ep11server = var.INTERNAL_GREP11,
       crypto_pass_enable = var.CRYPTO_PASSTHROUGH_ENABLEMENT,
       grep11_image = var.GREP11_IMAGE,
@@ -164,7 +178,7 @@ resource "local_file" "grep11_server_key" {
   count = var.INTERNAL_GREP11 ? 1 : 0
   content = tls_private_key.server_key.private_key_pem
   filename = "${path.module}/podman-play/srv1/grep11server-key.pem"
-  file_permission = "0664"
+  file_permission = "0600"
 }
 
 resource "local_file" "grep11_server_cert" {
@@ -199,7 +213,7 @@ resource "local_file" "c16_client_key" {
   count = (var.INTERNAL_GREP11 && !var.CRYPTO_PASSTHROUGH_ENABLEMENT) ? 1 : 0
   content = var.C16_CLIENT_KEY
   filename = "${path.module}/podman-play/cfg/c16client-key.pem"
-  file_permission = "0664"
+  file_permission = "0600"
 }
 
 locals {
