@@ -3,6 +3,11 @@ kind: Pod
 metadata:
   name: frontend-plugin-pod
 spec:
+  dnsConfig:
+    nameservers:
+%{ for ns in tpl.dns_nameservers ~}
+      - ${ns}
+%{ endfor ~}
   containers:
     - name: frontend_plugin
       image: ${tpl.image}
