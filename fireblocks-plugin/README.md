@@ -1,6 +1,6 @@
 # Offline Signing Orchestrator - Fireblocks Plugin
 
-The plugin provided within this repository contains the code required to integrate Fireblocks with the Offline Signing Orchestrator (OSO). Additional tooling is provided to generate the plugin image and to generate encrypted HPVS contracts used as workload configuration options within OSO. An additional image will be required to be supplied via [fireblocks-agent](https://github.com/fireblocks/fireblocks-agent) which is used to communicate with the Fireblocks API Gateway. This plugin and fireblocks-agent images are expected to be built and uploaded to a private docker container image registry, accessible to all OSO LPARs (ex. registry23.control.dap.local).
+The plugin provided within this repository contains the code required to integrate Fireblocks with the Offline Signing Orchestrator (OSO). Additional tooling is provided to generate the plugin image and to generate encrypted HPVS contracts used as workload configuration options within OSO. An additional image will be required to be supplied via [fireblocks-agent](https://github.com/fireblocks/fireblocks-agent) which is used to communicate with the Fireblocks API Gateway. This plugin and fireblocks-agent images are expected to be built and uploaded to a private container registry, accessible to all OSO LPARs (ex. registry23.control.dap.local).
 
 ## Prerequisites
 
@@ -10,7 +10,7 @@ The plugin provided within this repository contains the code required to integra
 - [Docker](https://www.docker.com/)
 
 ## Building
-The fireblocks-agent and OSO fireblocks-plugin images are required to be built on an s390x system with Docker. See instructions below.
+The fireblocks-agent and OSO fireblocks-plugin images are required to be built on an s390x system with Docker. A sample `Containerfile` is provided to build the plugin container image.
 
 ### Building Fireblocks Plugin
 ```
@@ -29,7 +29,7 @@ make build
 docker build -t fireblocks-agent:latest https://github.com/fireblocks/fireblocks-agent.git
 ```
 
-**Note: After the images are successfully built, push the images into the private docker container image registry used for OSO**
+**Note: After the images are successfully built, push the images into the private container registry used for OSO.**
 
 ## Contract Generation and Usage
 Refer to the contracts [readme](../contracts/fireblocks/README.md) for installation of the plugin.

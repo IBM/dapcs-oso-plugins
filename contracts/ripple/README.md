@@ -3,11 +3,6 @@
 ## Overview
 This function provides the integration of IBM Hyper Protect Offline Signing Orchestrator with the Ripple Custody product for the purposes of reviewing, approving, and automating the cold signing process of digital transactions originating in Ripple Custody.  For more information, please see the [IBM Hyper Protect Offline Signing Orchestrator product documentation](https://www.ibm.com/docs/en/hpdaoso).
 
-## Verify the Offline Signing Orchestrator Plugin image
-
-### Prerequisites
-- The supporting infrastructure containing syslog/registry/etc across LPAR1-LPAR3.
-
 ## Frontend Plugin
 The Offline Signing Orchestrator frontend plugin performs import or export operations to or from the Ripple Custody core which is accessible from LPAR1 (hot).
 
@@ -38,7 +33,7 @@ Using the Ripple Custody UI, create a functional user specifically for OSO. The 
     `openssl ec -in privateKey.pem -pubout -outform DER | openssl base64 -A -out publicKey.pem`
 
 1. In the Ripple Custody UI, create a functional user with the user public key. Use the `publicKey.pem` for the public key content.
-1. Obtain the base64 value used for the `SK` terraform variable within the contract.
+1. Obtain the base64 value used for the `HMZ_USER_SK` terraform variable within the contract.
 
     `cat privateKey.pem | base64 -w0`
 
@@ -51,11 +46,12 @@ OSO uses the encrypted workload to deploy the frontend (LPAR1) components during
 1. Edit the `terraform.tfvars` file and assign values to the following terraform variables:
     - `HMZ_AUTH_HOSTNAME` - Ripple Custody frontend auth hostname
     - `HMZ_API_HOSTNAME` - Ripple Custody frontend api hostname
-    - `VAULT_ID` - Vault ID used for cold vault operations. If you are using a new vault, then generate a new uuid.
-    - `SK` - Base64 private key for OSO functional user account
+    - `VAULT_IDS` - List of one or more vault IDs used for cold vault operations. If you are using a new vault, then generate a new uuid.
+    - `HMZ_USER_SK` - Base64 private key for OSO functional user account
     - `FRONTEND_PLUGIN_IMAGE` - Frontend plugin image with sha256
-    - `SEED` - Passphrase used to optionally encrypt the data being transferred between OSO and Ripple Custody. The passphrase must match with the backend.
+    - `OSOENCRYPTIONPASS` - Passphrase used to optionally encrypt the data being transferred between OSO and Ripple Custody. The passphrase must match with the backend.
     - `TOKEN_EXP` - Expiration time configured in Ripple Custody for the bearer token returned upon authentication
+    - `BATCH_UPLOAD_SIZE` - Number of documents per batch during bulk upload. Must be a positive integer (default: 20)
 1. To generate the encrypted workload, change to the `contracts/ripple` directory and run:
 
     `./create-frontend.sh`
@@ -66,7 +62,6 @@ OSO uses the encrypted workload to deploy the frontend (LPAR1) components during
 - Supporting infrastructure deployed containing syslog/registry/etc across LPAR1-LPAR3 with hipersocket networks defined.
 - Download OpenTofu and the required terraform providers (hpcr, null and local) from the Offline Signing Orchestrator release archive.
 - Build the Ripple Custody plugin image [by following the doc](../../ripple-plugin/README.md), copy it to the private registry, and obtain the sha256 hash of the image.
-- SHA256 hash of the Ripple Custody plugin image within the private registry (see [ripple readme](../../ripple-plugin/README.md) for instructions on how to build and copy the image to the private registry)
 
 ### Copy cold bridge, cold vault and kmsconnect images to registry
 Obtain the cold bridge, cold vault, and kmsconnect images from Ripple and copy them to the private registry. Obtain the sha256 hashes for each of the images.
@@ -80,11 +75,11 @@ The encrypted workload will be used within OSO when deploying along with the GRE
     - `PREFIX` - Prefix used for OSO deployment
     - `STATIC_IP` - true for releases OSO 1.4 and higher where static IP addresses are used, otherwise set to false
     - `BACKEND_PLUGIN_IMAGE` - Backend plugin image with sha256 (see above)
-    - `SEED` - Passphrase used to optionally encrypt the data being transferred between OSO and Ripple Custody (matches frontend)
+    - `OSOENCRYPTIONPASS` - Passphrase used to optionally encrypt the data being transferred between OSO and Ripple Custody (matches frontend)
     - `COLD_BRIDGE_IMAGE` - Cold bridge image with sha256 (see above)
     - `COLD_VAULT_IMAGE` - Cold vault image with sha256 (see above)
     - `KMSCONNECT_IMAGE` - KMS connect image with sha256 (see above)
-    - `VAULT_ID` - Vault ID used for cold vault operations
+    - `VAULT_IDS` - List of one or more vault IDs used for cold vault operations
     - `NOTARY_MESSAGING_PUBLIC_KEY` - Notary messaging public key after genesis
     - `CRYPTO_PASSTHROUGH_ENABLEMENT` - To enable crypto passthrough
     - `INTERNAL_GREP11` - boolean value for to bringup grep11 interanally or externally
@@ -107,7 +102,7 @@ The encrypted workload will be used within OSO when deploying along with the GRE
     `./create-backend.sh`
 
 ## OSO Ripple Custody Encrypted Workloads
-Within the orchestration process, OSO requires plugin workload definitions to be encrypted. When configuring OSO, the encrypted plugin workloads are specified in the FRONTEND_WORKLOADS and BACKEND_WORKLOADS OSO variables within the OSO `terraform.tfvars` file. After generating the encrypted plugin workloads using the `create_frontend.sh`and `create_backend.sh` scripts, obtain the values for the FRONTEND_WORKLOADS and BACKEND_WORKLOADS OSO variables by running the following command from the `contracts/ripple` directory:
+Within the orchestration process, OSO requires plugin workload definitions to be encrypted. When configuring OSO, the encrypted plugin workloads are specified in the FRONTEND_WORKLOADS and BACKEND_WORKLOADS OSO variables within the OSO `terraform.tfvars` file. After generating the encrypted plugin workloads using the `create-frontend.sh` and `create-backend.sh` scripts, obtain the values for the FRONTEND_WORKLOADS and BACKEND_WORKLOADS OSO variables by running the following command from the `contracts/ripple` directory:
 
 `./get_workloads.sh`
 
