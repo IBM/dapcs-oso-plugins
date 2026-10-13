@@ -56,6 +56,7 @@ OSO uses the encrypted workload to deploy the frontend (LPAR1) components during
     - `FRONTEND_PLUGIN_IMAGE` - Frontend plugin image with sha256
     - `SEED` - Passphrase used to optionally encrypt the data being transferred between OSO and Ripple Custody. The passphrase must match with the backend.
     - `TOKEN_EXP` - Expiration time configured in Ripple Custody for the bearer token returned upon authentication
+    - `DNS_NAMESERVERS` - (Optional) List of DNS nameservers for pod dnsConfig (defaults to `["127.0.0.1"]`)
 1. To generate the encrypted workload, change to the `contracts/ripple` directory and run:
 
     `./create-frontend.sh`

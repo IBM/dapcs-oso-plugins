@@ -13,7 +13,6 @@ KMSCONNECT_IMAGE="registry.control23.dap.local/metaco-ripple/kms-ibm@sha256:"
 # Vault Configuration
 # Add one or more vault IDs.
 VAULT_IDS = [
-  "",
 ]
 
 # Encryption passphrase — must match OSOENCRYPTIONPASS in frontend terraform.tfvars.

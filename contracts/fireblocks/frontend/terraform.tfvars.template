@@ -4,3 +4,8 @@ FIREBLOCKS_AGENT_IMAGE="registry.control12.dap.local/oso/fireblocks-agent@sha256
 
 # Fireblocks
 REFRESH_TOKEN=""
+
+# DNS Configuration (optional, defaults to ["127.0.0.1"])
+DNS_NAMESERVERS = [
+    "127.0.0.1"
+]

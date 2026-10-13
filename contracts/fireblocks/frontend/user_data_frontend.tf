@@ -22,6 +22,7 @@ resource "local_file" "frontend_podman_play" {
       fbagent_image = var.FIREBLOCKS_AGENT_IMAGE,
       mobile_gateway_url = var.MOBILE_GATEWAY_URL,
       refresh_token = var.REFRESH_TOKEN,
+      dns_nameservers = length(var.DNS_NAMESERVERS) > 0 ? var.DNS_NAMESERVERS : ["127.0.0.1"],
     } },
   )
   filename = "frontend/podman-play.yml"

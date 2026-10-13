@@ -48,3 +48,9 @@ variable "REFRESH_TOKEN" {
   type        = string
   description = "Fireblocks refresh token (in base64)"
 }
+
+variable "DNS_NAMESERVERS" {
+  type        = list(string)
+  description = "List of DNS nameservers for frontend plugin pod dnsConfig"
+  default     = ["127.0.0.1"]
+}
