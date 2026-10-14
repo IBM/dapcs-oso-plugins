@@ -326,8 +326,18 @@ class FBPlugin(PluginProtocol):
                 component_status = self.signing_server.health_check()
 
             except Exception as e:
-                logger.info("Error getting status")
+                logger.error("Error getting signing server status")
                 logger.debug(f"Error: {e}")
+                return V1_3.ComponentStatus(
+                    status_code=500,
+                    status="ERROR",
+                    errors=[
+                        V1_3.Error(
+                            code="STATUS-FAILED",
+                            message="Failed to get signing server status",
+                        )
+                    ],
+                )
 
             logger.debug(f"signing server status received: {component_status=}")
 
@@ -349,7 +359,6 @@ class FBPlugin(PluginProtocol):
         )
 
         for message_to_sign in message_envelope.message.payload.messagesToSign:
-            # TODO: Continue on error
             try:
                 signature = self.signing_server.sign(
                     key_id=message_envelope.message.payload.signingDeviceKeyId,
@@ -358,8 +367,13 @@ class FBPlugin(PluginProtocol):
 
             except Exception as e:
                 self.signing_error = True
-                logger.info("Error signing message")
+                logger.error(f"Error signing message index {message_to_sign.index}")
                 logger.debug(f"Error: {e}")
+                message_status.status = MessageState.FAILED
+                message_status.response = MessageResponse(
+                    errorMessage="Failed to sign message"
+                )
+                return message_status
 
             signed_message = SignedMessage(
                 index=message_to_sign.index,
