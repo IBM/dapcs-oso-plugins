@@ -90,8 +90,9 @@ class FBPlugin(PluginProtocol):
                 keys = signing_server.list_keys(key_type)
 
             except Exception as e:
-                logger.info("Error listing keys")
+                logger.error(f"Error listing {key_type.name} keys, skipping")
                 logger.debug(f"Error: {e}")
+                continue
 
             needed_keys = current_oso_plugin_app().Config().min_keys - len(keys)
 
@@ -100,8 +101,9 @@ class FBPlugin(PluginProtocol):
                     key_id, pub_key_pem = signing_server.generate_key_pair(key_type)
 
                 except Exception as e:
-                    logger.info("Error generating keys")
+                    logger.error(f"Error generating {key_type.name} key")
                     logger.debug(f"Error: {e}")
+                    continue
 
                 all_keys_info.append(
                     {
