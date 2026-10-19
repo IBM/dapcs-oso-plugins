@@ -47,4 +47,5 @@ variable "MOBILE_GATEWAY_URL" {
 variable "REFRESH_TOKEN" {
   type        = string
   description = "Fireblocks refresh token (in base64)"
+  sensitive   = true
 }

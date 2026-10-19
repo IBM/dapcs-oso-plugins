@@ -31,7 +31,7 @@ variable "FRONTEND_PLUGIN_IMAGE" {
   description = "Frontend plugin image name"
 }
 
-variable "OSOENCRYPTIONPASS" {
+variable "SEED" {
   type      = string
   description = "Encrypt data through the iteration pipeline (should be same value as backend plugin)"
   default   = ""
@@ -40,7 +40,7 @@ variable "OSOENCRYPTIONPASS" {
 
 # Ripple
 variable "HMZ_USER_SK" {
-  type = string
+  type      = string
   description = "Private (secret) key of a registered user used to login to Ripple"
   sensitive = true
 }
