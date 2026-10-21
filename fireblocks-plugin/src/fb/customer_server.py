@@ -21,7 +21,7 @@ import sys
 from flask import jsonify, request
 from flask.views import MethodView
 
-from pydantic import ValidationError
+from werkzeug.exceptions import BadRequest
 
 from oso.framework.plugin import current_oso_plugin_app
 
@@ -44,9 +44,9 @@ class CustomerServerMessagesToSignApi(MethodView):
             messages_request = MessagesRequest.model_validate(json_data)
 
         except Exception as e:
-            logger.error("Could not validate MessagesStatusRequest")
+            logger.error("Could not validate MessagesRequest")
             logger.debug(f"Request: {json_data}, Error: {e}")
-            raise ValidationError("Could not validate MessagesStatusRequest")
+            raise BadRequest(f"Could not validate MessagesRequest: {e}")
 
         messages_status_response: MessagesStatusResponse = (
             current_oso_plugin_app().messagesToSign(messages_request)
@@ -73,7 +73,7 @@ class CustomerServerMessagesStatusApi(MethodView):
         except Exception as e:
             logger.error("Could not validate MessagesStatusRequest")
             logger.debug(f"Request: {json_data}, Error: {e}")
-            raise ValidationError("Could not validate MessagesStatusRequest")
+            raise BadRequest(f"Could not validate MessagesStatusRequest: {e}")
 
         # You don't really get type checking from current_oso_plugin
         messages_status_response: MessagesStatusResponse = (
