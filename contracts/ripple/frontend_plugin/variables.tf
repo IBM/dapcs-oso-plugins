@@ -94,3 +94,9 @@ variable "BATCH_UPLOAD_SIZE" {
     error_message = "BATCH_UPLOAD_SIZE must be a positive integer."
   }
 }
+
+variable "DNS_NAMESERVERS" {
+  type        = list(string)
+  description = "List of DNS nameservers for frontend plugin pod dnsConfig"
+  default     = ["127.0.0.1"]
+}

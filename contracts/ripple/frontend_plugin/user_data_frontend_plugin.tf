@@ -35,6 +35,7 @@ resource "local_file" "frontend_plugin_podman_play" {
       OSOENCRYPTIONPASS    = var.OSOENCRYPTIONPASS,
       TOKEN_EXP            = var.TOKEN_EXP,
       BATCH_UPLOAD_SIZE    = var.BATCH_UPLOAD_SIZE,
+      dns_nameservers      = length(var.DNS_NAMESERVERS) > 0 ? var.DNS_NAMESERVERS : ["127.0.0.1"],
     } },
   )
   filename        = "frontend_plugin/play.yml"
