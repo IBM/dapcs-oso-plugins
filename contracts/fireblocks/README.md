@@ -84,7 +84,7 @@ By default, the backend deploys an internal GREP11 instance in the VM. To use an
 GREP11 will be running in the backend VM and will be communicated to over localhost.
 
 ###### Copy grep11-c16 image to registry
-Download the grep11-c16 image, copy it to the private registry, and obtain the sha256 of the image.  See the [IBM Hyper Protect Virtual Servers Documentation](https://www.ibm.com/docs/en/hpvs/2.1.x?topic=dcenasee-downloading-crypto-express-network-api-secure-execution-enclaves-major-release) for steps to locate and download the image.
+Download the grep11-c16 image, copy it to the private registry, and obtain the sha256 of the image.  See the [IBM Confidential Computing Container Runtime (CCRT) Documentation](https://www.ibm.com/docs/en/ccrt/2.2.x?topic=dcenasee-downloading-crypto-express-network-api-secure-execution-enclaves-major-releaseq) for steps to locate and download the image.
 
     - `GREP11_IMAGE` - GREP11-C16 image with sha256 (see above)
     - `DOMAIN` - Crypto appliance domain

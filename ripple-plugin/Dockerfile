@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# NOTE: This Dockerfile is provided as a sample that can be used to build the
+# Ripple Custody plugin container image.
+
 ARG RELEASEVER=9
 ARG NGINX_VERSION=1.30.4
 ARG NGINX_PKG_RELEASE=1~trixie

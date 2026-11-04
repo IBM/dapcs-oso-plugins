@@ -16,7 +16,7 @@ VAULT_IDS = [
   "",
 ]
 
-# Encryption passphrase — must match OSOENCRYPTIONPASS in frontend terraform.tfvars.
+# Encryption passphrase - must match OSOENCRYPTIONPASS in frontend terraform.tfvars.
 OSOENCRYPTIONPASS=""
 
 NOTARY_MESSAGING_PUBLIC_KEY=""

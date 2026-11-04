@@ -1,6 +1,23 @@
 # Offline Signing Orchestrator - Ripple Custody Plugin
 
-The plugin provided within this repository contains the code required to integrate Ripple Custody with the Offline Signing Orchestrator (OSO). Additional tooling is provided to generate the plugin image and to generate encrypted HPVS contracts used as workload configuration options within OSO. The Ripple Custody plugin image is expected to be built and uploaded to a private container image registry along with other images, accessible to all OSO LPARs.
+The plugin provided within this repository contains the code required to integrate Ripple Custody with the Offline Signing Orchestrator (OSO). Additional tooling is provided to generate the plugin image and to generate encrypted IBM Confidential Computing Container Runtime (CCRT) contracts used as workload configuration options within OSO. The Ripple Custody plugin image is expected to be built and uploaded to a private container registry along with other images, accessible to all OSO LPARs.
+
+## Compatibility
+
+The plugin has been tested with the following versions:
+
+| Component                    | Version                          |
+| ---------------------------- | -------------------------------- |
+| Offline Signing Orchestrator | 1.4.1.4+, 1.5.1+                 |
+| Ripple Custody (Harmonize)   | 1.34                             |
+
+Ripple images used:
+
+| Image             | Version |
+| ----------------- | ------- |
+| vault-releases    | 1.32.13 |
+| vault-cold-bridge | 1.32.13 |
+| kms-ibm           | 1.13.17 |
 
 ## Prerequisites
 
@@ -8,52 +25,34 @@ The plugin provided within this repository contains the code required to integra
 - [Podman](https://podman.io/)
 - `curl` and `gpg`
 
-## Build Host Setup
-
-Run once on each build host or CI runner before building:
-
-```bash
-cd ripple-plugin
-sudo ./setup-build-host.sh
-```
-
-To verify the setup afterwards:
-
-```bash
-podman image trust show
-```
-
 ## Building
+The OSO ripple-plugin image is required to be built on an s390x system with Docker. A sample `Dockerfile` is provided to build the plugin container image.
 
-The OSO ripple-plugin image must be built on an s390x system with Podman.
+### Build variables
+| Variable    | Default       | Description                    |
+| ----------- | ------------- | ------------------------------ |
+| `REGISTRY`  | `us.icr.io`   | URL of your container registry |
+| `NAMESPACE` | `dap-osc-dev` | Container registry namespace   |
+| `TAG`       | `latest`      | Image tag                      |
 
-### Build environment variables
-
-| Environment Variable | Description                                         |
-| -------------------- | --------------------------------------------------- |
-| `REGISTRY_URL`       | URL of your container registry (e.g., `us.icr.io`) |
-| `REGISTRY_NAMESPACE` | Container registry namespace                        |
-
-### Building the Ripple Plugin
-
-```bash
-git clone git@github.com:IBM/dapcs-oso-plugins.git
+### Building Ripple Plugin
+```
+git clone https://github.com/IBM/dapcs-oso-plugins.git
 cd dapcs-oso-plugins/ripple-plugin
-
 export REGISTRY_URL=us.icr.io
 export REGISTRY_NAMESPACE=<REGISTRY_NAMESPACE>
 make build
 ```
+The image is built as `oso-ripple-plugins` and tagged `<REGISTRY>/<NAMESPACE>/oso-ripple-plugins:<TAG>`.
 
-> **Note:** After the images are successfully built, push the images into the private
-> container image registry used for OSO.
+**Note: After the image is successfully built, push it to the private container registry used for OSO.**
 
-### Contract Generation and Usage
-
+## Contract Generation and Usage
 Refer to the contracts [readme](../contracts/ripple/README.md) for installation of the plugin.
 
-### Run Unit Tests
+## Development
 
-```bash
+### Run unit tests
+```
 make test
 ```
