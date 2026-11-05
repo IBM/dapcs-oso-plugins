@@ -133,9 +133,6 @@ write_policy_json() {
       ],
       "registry.control23.dap.local": [
         { "type": "insecureAcceptAnything" }
-      ],
-      "quay.io/centos/centos": [
-        { "type": "insecureAcceptAnything" }
       ]
     }
   }
