@@ -54,10 +54,7 @@ RUN tar xzf /archive -C /project --strip-components=1 \
 FROM registry.access.redhat.com/ubi${RELEASEVER}/ubi-minimal:latest AS compile
 
 ENV HOME=/app-root
-RUN --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum.repos.d/centos.repo,target=/etc/yum.repos.d/centos.repo \
-    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial,target=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial \
-    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum/vars/stream,target=/etc/yum/vars/stream \
-    rpm --install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
+RUN rpm --install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
     && microdnf --assumeyes \
         --setopt=install_weak_deps=0 \
         --setopt=keepcache=0 \
@@ -94,10 +91,7 @@ ARG RELEASEVER
 ARG NGINX_VERSION
 ARG NGINX_PKG_RELEASE
 
-RUN --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum.repos.d/centos.repo,target=/etc/yum.repos.d/centos.repo \
-    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial,target=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial \
-    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum/vars/stream,target=/etc/yum/vars/stream \
-    rpm --install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
+RUN rpm --install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
     && mkdir /installroot \
     && dnf --assumeyes \
         --setopt=install_weak_deps=0 \
@@ -162,10 +156,7 @@ CMD [ "/oso-root/common/entrypoints/entrypoint.sh" ]
 FROM compile AS test
 
 ENV PATH="/opt/venv/bin:$PATH"
-RUN --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum.repos.d/centos.repo,target=/etc/yum.repos.d/centos.repo \
-    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial,target=/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial \
-    --mount=type=bind,from=quay.io/centos/centos:stream9,source=/etc/yum/vars/stream,target=/etc/yum/vars/stream \
-    microdnf --assumeyes \
+RUN microdnf --assumeyes \
         --setopt=install_weak_deps=0 \
         --disablerepo='*' \
         --enablerepo=ubi-9-baseos-rpms \

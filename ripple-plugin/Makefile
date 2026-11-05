@@ -57,21 +57,29 @@ pip-compile: requirements.constraints.txt requirements.txt requirements.build.tx
 generate: pip-compile
 
 build :
-	docker build \
-		. --target release -t oso-ripple-plugins:latest -t $(REGISTRY)/$(NAMESPACE)/oso-ripple-plugins:$(TAG) -f Dockerfile --platform linux/s390x --provenance=false
+	podman build \
+		--pull=always \
+		--target release \
+		-t oso-ripple-plugins:latest \
+		-t $(REGISTRY)/$(NAMESPACE)/oso-ripple-plugins:$(TAG) \
+		-f Dockerfile \
+		--platform linux/s390x \
+		.
 
 ifdef RIPPLE_PLUGINS_TEST_RESULTS
 VOL_OPTS ::= -v $(RIPPLE_PLUGINS_TEST_RESULTS):/tests/results:rw,z
 endif
 
 test-build:
-	docker build \
+	podman build \
+		--pull=always \
 		--target test \
 		-t $(REGISTRY)/$(NAMESPACE)/oso-ripple-plugins-test:$(TAG) \
-		--platform linux/s390x .
+		--platform linux/s390x \
+		.
 
 test: test-build
-	docker run --rm \
+	podman run --rm \
 		--workdir /tests \
 		--platform linux/s390x \
 		--entrypoint pytest \
