@@ -16,7 +16,7 @@ cffi==2.1.1
     #   ibm-oso-fireblocks-plugin
 charset-normalizer==3.4.4
     # via requests
-click==8.5.0
+click==8.5.1
     # via flask
 cryptography==50.0.0
     # via ibm-oso-fireblocks-plugin
