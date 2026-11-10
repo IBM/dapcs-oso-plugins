@@ -14,12 +14,6 @@
 # limitations under the License.
 #
 
-variable "DEBUG" {
-  type        = bool
-  description = "Create debug contracts, plaintext"
-  default     = false
-}
-
 variable "HPCR_CERT" {
   type        = string
   description = "Public HPCR certificate for contract encryption"

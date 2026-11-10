@@ -32,7 +32,7 @@ resource "local_file" "backend_podman_play" {
     } },
   )
   filename        = "backend/podman-play.yml"
-  file_permission = "0664"
+  file_permission = "0600"
 
   depends_on = [
     local_file.grep11_cfg,
@@ -61,6 +61,25 @@ resource "hpcr_tgz" "backend_workload" {
   folder     = "${path.module}/backend"
 }
 
+# Remove the plaintext podman-play.yml (contains the GREP11 client key) after it has been archived to avoid
+# leaving it on disk in an intermediate file.
+resource "null_resource" "cleanup_backend_play" {
+  depends_on = [hpcr_tgz.backend_workload]
+
+  triggers = {
+    play_content = local_file.backend_podman_play.content
+  }
+
+  provisioner "local-exec" {
+    command = "rm -f ${path.module}/backend/podman-play.yml"
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = "rm -f ${path.module}/backend/podman-play.yml"
+  }
+}
+
 locals {
   grep11_endpoint = var.GREP11_ENDPOINT != null ? var.GREP11_ENDPOINT : format("%s-cs-backend-grep11.control23.dap.local:9876", var.PREFIX)
   backend_play = {
@@ -79,17 +98,10 @@ resource "hpcr_text_encrypted" "backend_contract" {
   cert = var.HPCR_CERT == "" ? null : var.HPCR_CERT
 }
 
-resource "local_file" "backend_contract" {
-  count    = var.DEBUG ? 1 : 0
-  content  = yamlencode(local.backend_workload)
-  filename = "${path.module}/backend_plain.yml"
-  file_permission = "0664"
-}
-
 resource "local_file" "backend_contract_encrypted" {
   content  = hpcr_text_encrypted.backend_contract.rendered
   filename = "${path.module}/backend.yml"
-  file_permission = "0664"
+  file_permission = "0600"
 }
 
 resource "local_file" "grep11_cfg" {
@@ -110,7 +122,7 @@ resource "local_file" "grep11_server_key" {
   count = var.INTERNAL_GREP11 ? 1 : 0
   content = tls_private_key.server_key.private_key_pem
   filename = "${path.module}/backend/srv1/grep11server-key.pem"
-  file_permission = "0664"
+  file_permission = "0600"
 }
 
 resource "local_file" "grep11_server_cert" {
@@ -145,7 +157,7 @@ resource "local_file" "c16_client_key" {
   count = (var.INTERNAL_GREP11 && !var.CRYPTO_PASSTHROUGH_ENABLEMENT) ? 1 : 0
   content = var.C16_CLIENT_KEY
   filename = "${path.module}/backend/cfg/c16client-key.pem"
-  file_permission = "0664"
+  file_permission = "0600"
 }
 
 locals {
