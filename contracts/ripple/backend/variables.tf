@@ -17,12 +17,6 @@ variable "PREFIX" {
   type        = string
 }
 
-variable "DEBUG" {
-  type        = bool
-  description = "Create debug contracts, plaintext"
-  default     = true
-}
-
 variable "OSOENCRYPTIONPASS" {
   type        = string
   description = "Encrypt data through the iteration pipeline (should be the same value as frontend plugin)"

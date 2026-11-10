@@ -93,7 +93,7 @@ resource "local_file" "podman-play" {
     } },
   )
   filename = "podman-play/play.yml"
-  file_permission = "0664"
+  file_permission = "0600"
 
   depends_on = [
     local_file.ibm_cfg,
@@ -124,6 +124,25 @@ resource "hpcr_tgz" "workload" {
   folder = "podman-play"
 }
 
+# Remove the plaintext play.yml (contains OSOENCRYPTIONPASS) after it has been archived to avoid
+# leaving it on disk in an intermediate file.
+resource "null_resource" "cleanup_backend_play" {
+  depends_on = [hpcr_tgz.workload]
+
+  triggers = {
+    play_content = local_file.podman-play.content
+  }
+
+  provisioner "local-exec" {
+    command = "rm -f podman-play/play.yml"
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = "rm -f podman-play/play.yml"
+  }
+}
+
 locals {
   grep11_endpoint = var.STATIC_IP ? var.GREP11_ENDPOINT: format("%s-cs-backend-grep11.control23.dap.local:9876", var.PREFIX)
   ibm_cfg = <<-EOT
@@ -146,17 +165,10 @@ resource "hpcr_text_encrypted" "contract" {
   cert      = var.HPCR_CERT == "" ? null : var.HPCR_CERT
 }
 
-resource "local_file" "contract" {
-  count    = var.DEBUG ? 1 : 0
-  content  = yamlencode(local.workload)
-  filename = "backend_plain.yml"
-  file_permission = "0664"
-}
-
 resource "local_file" "contract_encrypted" {
   content  = hpcr_text_encrypted.contract.rendered
   filename = "backend.yml"
-  file_permission = "0664"
+  file_permission = "0600"
 }
 
 

@@ -43,6 +43,8 @@ OSO uses the encrypted workload to deploy the frontend (LPAR1) components during
 1. Copy the terraform template.
 
     `cp terraform.tfvars.template terraform.tfvars`
+
+    The file will contain secrets (for example `HMZ_USER_SK`). Restrict access to it: `chmod 600 terraform.tfvars`, and delete it once the workload has been generated.
 1. Edit the `terraform.tfvars` file and assign values to the following terraform variables:
     - `HMZ_AUTH_HOSTNAME` - Ripple Custody frontend auth hostname
     - `HMZ_API_HOSTNAME` - Ripple Custody frontend api hostname
@@ -71,6 +73,8 @@ The encrypted workload will be used within OSO when deploying along with the GRE
 1. Copy the terraform template
 
     `cp terraform.tfvars.template terraform.tfvars`
+
+    The file will contain secrets (passphrase and private keys). Restrict access to it: `chmod 600 terraform.tfvars`. Delete it, and any `terraform.tfstate*` files, once the workload has been generated. If you run `tofu`/`terraform` manually instead of `create-backend.sh`, run `umask 077` first.
 2. Edit the `terraform.tfvars` file and assign values to the following terraform variables:
     - `PREFIX` - Prefix used for OSO deployment
     - `STATIC_IP` - true for releases OSO 1.4 and higher where static IP addresses are used, otherwise set to false

@@ -133,7 +133,6 @@ COPY --from=runtime-install /installroot /
 ENV HOME=/app-root
 RUN install --directory --mode 0700 --owner 1001 --group 0 \
         "${HOME}" \
-        "${HOME}/.ssh" \
     ; chown -R 1001:0 /var/run \
     ; chmod -R ug+rwX /var/run \
     ; chown -R 1001:0 /var/lib/nginx \
