@@ -109,7 +109,7 @@ Download the grep11-c16 image, copy it to the private registry, and obtain the s
     `./create-backend.sh`
 
 ## OSO Encrypted Workloads
-Within the orchestration process, OSO requires plugin workload definitions to be encrypted. When configuring OSO, the encrypted plugin workloads are specified in the FRONTEND_WORKLOADS and BACKEND_WORKLOADS OSO variables within the OSO `terraform.tfvars` file. After generating the encrypted plugin workloads using the `create_frontend.sh` and `create_backend.sh`, obtain the values for the FRONTEND_WORKLOADS and BACKEND_WORKLOADS OSO variables by running the following command from the `contracts` directory:
+Within the orchestration process, OSO requires plugin workload definitions to be encrypted. When configuring OSO, the encrypted plugin workloads are specified in the FRONTEND_WORKLOADS and BACKEND_WORKLOADS OSO variables within the OSO `terraform.tfvars` file. After generating the encrypted plugin workloads using the `create-frontend.sh` and `create-backend.sh`, obtain the values for the FRONTEND_WORKLOADS and BACKEND_WORKLOADS OSO variables by running the following command from the `contracts` directory:
 
 ### Hipersocket34
 When using an external grep11 server or crypto passthrough, `hipersocket34` for the `backend-plugin` in `BACKEND_WORKLOADS` should be set to false by setting the environment variable `HIPERSOCKET34=false` when running the `get_workloads.sh` script.
@@ -117,6 +117,11 @@ When using an external grep11 server or crypto passthrough, `hipersocket34` for 
 `./get_workloads.sh`
 
 Note: update the `env_seed` and `volume_path` within the backend workload section.
+
+## Contract security
+OSO uses a two-persona contract model. The Plugin Custodian creates the workload section, and the environment section is created separately.
+
+Contracts are encrypted with the CCRV encryption certificate. This certificate is public, so encryption protects confidentiality but doesn't prove who created a contract or whether it was changed. Allow access to the systems where contracts are created, stored and transferred only to authenticated and authorized personnel.
 
 ## Signing Key Registration Process
 
