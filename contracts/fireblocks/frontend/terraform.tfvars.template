@@ -4,3 +4,11 @@ FIREBLOCKS_AGENT_IMAGE="registry.control12.dap.local/oso/fireblocks-agent@sha256
 
 # Fireblocks
 REFRESH_TOKEN=""
+
+# Optional: admin access to POST /api/frontend/v1alpha1/generate
+# ADMIN_CA_CERT=<<-EOT
+# -----BEGIN CERTIFICATE-----
+# ...
+# -----END CERTIFICATE-----
+# EOT
+# ADMIN_FINGERPRINTS=["SHA256:..."]

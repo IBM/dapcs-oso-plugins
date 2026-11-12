@@ -23,6 +23,11 @@ spec:
           value: "fb.plugin:FBPlugin"
         - name: plugin__mode
           value: "frontend"
+        # Second mtls parser: its allowlist merges with the config map's (index 0)
+        - name: AUTH__PARSERS__1__TYPE
+          value: "oso.framework.auth.mtls"
+        - name: AUTH__PARSERS__1__ALLOWLIST
+          value: ${jsonencode(jsonencode({ admin = tpl.admin_fingerprints }))}
     - name: frontend_plugin_proxy
       image: ${tpl.plugin_image}
       command:
@@ -34,6 +39,8 @@ spec:
       env:
         - name: app__name
           value: "frontend_plugin_proxy"
+        - name: CERTS__ADMIN_CA
+          value: ${jsonencode(tpl.admin_ca_cert)}
       ports:
         - containerPort: 4000
           hostPort: 4000

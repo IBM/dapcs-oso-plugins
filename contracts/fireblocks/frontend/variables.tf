@@ -1,5 +1,5 @@
 #
-# (c) Copyright IBM Corp. 2025
+# (c) Copyright IBM Corp. 2025, 2026
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,4 +41,16 @@ variable "MOBILE_GATEWAY_URL" {
 variable "REFRESH_TOKEN" {
   type        = string
   description = "Fireblocks refresh token (in base64)"
+}
+
+variable "ADMIN_CA_CERT" {
+  type        = string
+  description = "CA certificate (PEM) the proxy trusts for admin client certificates (POST /generate). Empty disables admin access"
+  default     = ""
+}
+
+variable "ADMIN_FINGERPRINTS" {
+  type        = list(string)
+  description = "Fingerprints (SHA256:...) of admin client certificates allowed to call POST /generate"
+  default     = []
 }

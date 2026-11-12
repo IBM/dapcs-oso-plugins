@@ -1,5 +1,5 @@
 #
-# (c) Copyright IBM Corp. 2025
+# (c) Copyright IBM Corp. 2025, 2026
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@ resource "local_file" "frontend_podman_play" {
       fbagent_image = var.FIREBLOCKS_AGENT_IMAGE,
       mobile_gateway_url = var.MOBILE_GATEWAY_URL,
       refresh_token = var.REFRESH_TOKEN,
+      admin_ca_cert = var.ADMIN_CA_CERT,
+      admin_fingerprints = var.ADMIN_FINGERPRINTS,
     } },
   )
   filename = "frontend/podman-play.yml"
