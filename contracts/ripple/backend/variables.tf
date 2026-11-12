@@ -21,6 +21,7 @@ variable "OSOENCRYPTIONPASS" {
   type        = string
   description = "Encrypt data through the iteration pipeline (should be the same value as frontend plugin)"
   default     = ""
+  sensitive   = true
 }
 
 variable "BACKEND_PLUGIN_IMAGE" {
@@ -58,6 +59,7 @@ variable "PASSPHRASE" {
   type        = string
   description = "Passphrase for cold-bridge. Use '{{EMPTY}}' so that the bridge data is not cyphered and can be managed by OSO"
   default     = "{{EMPTY}}"
+  sensitive   = true
 }
 
 
@@ -92,9 +94,10 @@ variable "GREP11_CA" {
 }
 
 variable "GREP11_CLIENT_KEY" {
-  type = string
+  type      = string
   description = "GREP11 client key"
-  default = ""
+  default   = ""
+  sensitive = true
 }
 
 variable "GREP11_CLIENT_CERT" {
@@ -146,7 +149,8 @@ variable "C16_CLIENT_LOGLEVEL" {
 variable "C16_CLIENT_KEY" {
   type        = string
   description = "Crypto appliance client key"
-  default = ""
+  default     = ""
+  sensitive   = true
 }
 
 variable "C16_CLIENT_CERT" {
