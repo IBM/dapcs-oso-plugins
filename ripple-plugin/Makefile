@@ -58,7 +58,7 @@ generate: pip-compile
 
 build :
 	docker build \
-		. --target release -t oso-ripple-plugins:latest -t $(REGISTRY)/$(NAMESPACE)/oso-ripple-plugins:$(TAG) -f Dockerfile --platform linux/s390x 
+		. --target release -t oso-ripple-plugins:latest -t $(REGISTRY)/$(NAMESPACE)/oso-ripple-plugins:$(TAG) -f Dockerfile --platform linux/s390x --provenance=false
 
 ifdef RIPPLE_PLUGINS_TEST_RESULTS
 VOL_OPTS ::= -v $(RIPPLE_PLUGINS_TEST_RESULTS):/tests/results:rw,z
