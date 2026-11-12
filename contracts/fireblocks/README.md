@@ -50,6 +50,8 @@ OSO uses the encrypted workload to deploy the frontend (LPAR1) components during
 1. Copy the terraform template.
 
     `cp terraform.tfvars.template terraform.tfvars`
+
+    The file will contain secrets (for example `REFRESH_TOKEN`). Restrict access to it: `chmod 600 terraform.tfvars`, and delete it once the workload has been generated.
 1. Edit the `terraform.tfvars` file and assign values to the following terraform variables:
     - `FRONTEND_PLUGIN_IMAGE` - Frontend plugin image with sha256 digest
     - `FIREBLOCKS_AGENT_IMAGE` - Fireblocks agent image with sha256 digest
@@ -72,6 +74,8 @@ The encrypted workload will be used within OSO when deploying along with the GRE
 1. Copy the terraform template
 
     `cp terraform.tfvars.template terraform.tfvars`
+
+    The file will contain secrets (private keys). Restrict access to it: `chmod 600 terraform.tfvars`, and delete it once the workload has been generated. If you run `tofu`/`terraform` manually instead of `create-backend.sh`, run `umask 077` first and delete any `terraform.tfstate*` files afterwards.
 1. Edit the `terraform.tfvars` file and assign values to the following terraform variables:
     - `PREFIX` - Prefix used for OSO deployment
     - `BACKEND_PLUGIN_IMAGE` - Backend plugin image with sha256 (see above)
