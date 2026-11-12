@@ -87,13 +87,6 @@ resource "hpcr_text_encrypted" "frontend_plugin_contract" {
   cert = var.HPCR_CERT == "" ? null : var.HPCR_CERT
 }
 
-resource "local_file" "frontend_plugin_contract" {
-  count           = var.DEBUG ? 1 : 0
-  content         = yamlencode(local.frontend_plugin_workload)
-  filename        = "frontend_plugin_contract.yml"
-  file_permission = "0600"
-}
-
 resource "local_file" "frontend_plugin_contract_encrypted" {
   content         = hpcr_text_encrypted.frontend_plugin_contract.rendered
   filename        = "frontend_plugin.yml"
