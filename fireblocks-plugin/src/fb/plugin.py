@@ -90,7 +90,7 @@ class FBPlugin(PluginProtocol):
                 keys = signing_server.list_keys(key_type)
 
             except Exception as e:
-                logger.info("Error listing keys")
+                logger.error(f"Error listing {key_type.name} keys, skipping")
                 logger.debug(f"Error: {e}")
                 continue
 
@@ -101,7 +101,7 @@ class FBPlugin(PluginProtocol):
                     key_id, pub_key_pem = signing_server.generate_key_pair(key_type)
 
                 except Exception as e:
-                    logger.info("Error generating keys")
+                    logger.error(f"Error generating {key_type.name} key")
                     logger.debug(f"Error: {e}")
                     continue
 
@@ -335,8 +335,18 @@ class FBPlugin(PluginProtocol):
                 component_status = self.signing_server.health_check()
 
             except Exception as e:
-                logger.info("Error getting status")
+                logger.error("Error getting signing server status")
                 logger.debug(f"Error: {e}")
+                return V1_3.ComponentStatus(
+                    status_code=500,
+                    status="ERROR",
+                    errors=[
+                        V1_3.Error(
+                            code="STATUS-FAILED",
+                            message="Failed to get signing server status",
+                        )
+                    ],
+                )
 
             logger.debug(f"signing server status received: {component_status=}")
 
@@ -366,10 +376,13 @@ class FBPlugin(PluginProtocol):
 
             except Exception as e:
                 self.signing_error = True
-                message_status.status = MessageState.FAILED
-                logger.info("Error signing message")
+                logger.error(f"Error signing message index {message_to_sign.index}")
                 logger.debug(f"Error: {e}")
-                continue
+                message_status.status = MessageState.FAILED
+                message_status.response = MessageResponse(
+                    errorMessage="Failed to sign message"
+                )
+                return message_status
 
             signed_message = SignedMessage(
                 index=message_to_sign.index,

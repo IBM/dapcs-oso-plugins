@@ -27,7 +27,7 @@ resource "local_file" "frontend_podman_play" {
     } },
   )
   filename = "frontend/podman-play.yml"
-  file_permission = "0664"
+  file_permission = "0600"
 }
 
 # archive of the folder containing podman play file. This folder could create additional resources such as files
@@ -35,6 +35,25 @@ resource "local_file" "frontend_podman_play" {
 resource "hpcr_tgz" "frontend_workload" {
   depends_on = [ local_file.frontend_podman_play ]
   folder = "${path.module}/frontend"
+}
+
+# Remove the plaintext podman-play.yml after it has been archived to avoid leaving the
+# refresh token (REFRESH_TOKEN) in an intermediate file on disk.
+resource "null_resource" "cleanup_frontend_play" {
+  depends_on = [hpcr_tgz.frontend_workload]
+
+  triggers = {
+    play_content = local_file.frontend_podman_play.content
+  }
+
+  provisioner "local-exec" {
+    command = "rm -f ${path.module}/frontend/podman-play.yml"
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = "rm -f ${path.module}/frontend/podman-play.yml"
+  }
 }
 
 locals {
@@ -54,15 +73,8 @@ resource "hpcr_text_encrypted" "frontend_contract" {
   cert      = var.HPCR_CERT == "" ? null : var.HPCR_CERT
 }
 
-resource "local_file" "frontend_contract" {
-  count    = var.DEBUG ? 1 : 0
-  content  = yamlencode(local.frontend_workload)
-  filename = "frontend_contract.yml"
-  file_permission = "0664"
-}
-
 resource "local_file" "frontend_contract_encrypted" {
   content  = hpcr_text_encrypted.frontend_contract.rendered
   filename = "frontend.yml"
-  file_permission = "0664"
+  file_permission = "0600"
 }

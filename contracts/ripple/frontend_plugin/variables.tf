@@ -13,12 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-variable "DEBUG" {
-  type        = bool
-  description = "Create debug contracts, plaintext"
-  default     = false
-}
-
 variable "HPCR_CERT" {
   type        = string
   description = "Public HPCR certificate for contract encryption"
@@ -31,7 +25,7 @@ variable "FRONTEND_PLUGIN_IMAGE" {
   description = "Frontend plugin image name"
 }
 
-variable "SEED" {
+variable "OSOENCRYPTIONPASS" {
   type      = string
   description = "Encrypt data through the iteration pipeline (should be same value as backend plugin)"
   default   = ""

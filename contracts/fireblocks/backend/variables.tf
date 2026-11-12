@@ -18,12 +18,6 @@ variable "PREFIX" {
   type = string
 }
 
-variable "DEBUG" {
-  type        = bool
-  description = "Create debug contracts, plaintext"
-  default     = false
-}
-
 variable "BACKEND_PLUGIN_IMAGE" {
   type        = string
   description = "Backend plugin image containing registry"

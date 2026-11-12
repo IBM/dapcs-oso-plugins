@@ -2,3 +2,7 @@ terraform.tfvars
 terraform.tfstate*
 .terraform*
 *.yml
+
+podman-play/cert/
+podman-play/srv1/
+podman-play/cfg/

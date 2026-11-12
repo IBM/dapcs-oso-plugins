@@ -14,6 +14,9 @@
 # limitations under the License.
 #
 
+# NOTE: This Containerfile is provided as a sample that can be used to build the
+# Fireblocks plugin container image.
+
 FROM docker.io/library/oso-builder:latest as builder
 
 COPY pyproject.toml uv.lock ./

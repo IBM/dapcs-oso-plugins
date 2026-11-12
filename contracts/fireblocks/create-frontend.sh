@@ -15,6 +15,8 @@
 # limitations under the License.
 #
 
+umask 077
+
 . ./common.sh
 exportTF || builtin exit $?
 exportCP || builtin exit $?
@@ -24,9 +26,15 @@ contract_root=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd
 pushd "$contract_root" || exit 1
 
 pushd frontend || exit 1
+# Always remove secret-bearing intermediate files and Terraform state, even if apply fails or the script is interrupted.
+d="${contract_root}/frontend"
+trap 'rm -f "${d}/frontend/podman-play.yml" \
+            "${d}/frontend_contract.yml" \
+            "${d}/terraform.tfstate" "${d}/terraform.tfstate.backup"' EXIT
 # shellcheck disable=SC2154
 ${tf} init && ${tf} destroy -auto-approve && ${tf} apply -auto-approve
 ${CP} -rf frontend.yml ../output/frontend
+chmod 600 ../output/frontend/frontend.yml
 popd || exit 1
 
 popd || exit 1

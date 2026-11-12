@@ -244,7 +244,8 @@ def test_sign_failure_marks_message_failed(mode, client):
         status = fb_plugin.sign(envelope)
 
     assert status.status == MessageState.FAILED
-    assert status.response.signedMessages == []
+    assert not status.response.signedMessages
+    assert status.response.errorMessage == "Failed to sign message"
     assert fb_plugin.signing_error is True
 
 

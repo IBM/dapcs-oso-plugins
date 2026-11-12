@@ -50,6 +50,8 @@ OSO uses the encrypted workload to deploy the frontend (LPAR1) components during
 1. Copy the terraform template.
 
     `cp terraform.tfvars.template terraform.tfvars`
+
+    The file will contain secrets (for example `REFRESH_TOKEN`). Restrict access to it: `chmod 600 terraform.tfvars`, and delete it once the workload has been generated.
 1. Edit the `terraform.tfvars` file and assign values to the following terraform variables:
     - `FRONTEND_PLUGIN_IMAGE` - Frontend plugin image with sha256 digest
     - `FIREBLOCKS_AGENT_IMAGE` - Fireblocks agent image with sha256 digest
@@ -74,6 +76,8 @@ The encrypted workload will be used within OSO when deploying along with the GRE
 1. Copy the terraform template
 
     `cp terraform.tfvars.template terraform.tfvars`
+
+    The file will contain secrets (private keys). Restrict access to it: `chmod 600 terraform.tfvars`, and delete it once the workload has been generated. If you run `tofu`/`terraform` manually instead of `create-backend.sh`, run `umask 077` first and delete any `terraform.tfstate*` files afterwards.
 1. Edit the `terraform.tfvars` file and assign values to the following terraform variables:
     - `PREFIX` - Prefix used for OSO deployment
     - `BACKEND_PLUGIN_IMAGE` - Backend plugin image with sha256 (see above)
@@ -86,7 +90,7 @@ By default, the backend deploys an internal GREP11 instance in the VM. To use an
 GREP11 will be running in the backend VM and will be communicated to over localhost.
 
 ###### Copy grep11-c16 image to registry
-Download the grep11-c16 image, copy it to the private registry, and obtain the sha256 of the image.  See the [IBM Hyper Protect Virtual Servers Documentation](https://www.ibm.com/docs/en/hpvs/2.1.x?topic=dcenasee-downloading-crypto-express-network-api-secure-execution-enclaves-major-release) for steps to locate and download the image.
+Download the grep11-c16 image, copy it to the private registry, and obtain the sha256 of the image.  See the [IBM Confidential Computing Container Runtime (CCRT) Documentation](https://www.ibm.com/docs/en/ccrt/2.2.x?topic=dcenasee-downloading-crypto-express-network-api-secure-execution-enclaves-major-releaseq) for steps to locate and download the image.
 
     - `GREP11_IMAGE` - GREP11-C16 image with sha256 (see above)
     - `DOMAIN` - Crypto appliance domain

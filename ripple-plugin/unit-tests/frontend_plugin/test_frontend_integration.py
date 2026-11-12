@@ -63,13 +63,15 @@ def test_docs_download(client):
             },
         )
 
+    # vaultId in document content must be the operator-configured vault id ("vault_id"
+    # from VAULTID env), never the value supplied by the SaaS response body.
     assert response.status_code == 200
     assert response.json == {
         "documents": [
             {
                 "id": "test_transaction_id",
                 "content": (
-                    '{"vaultId": "test_vault_id", "accounts": [], "transactions":'
+                    '{"vaultId": "vault_id", "accounts": [], "transactions":'
                     ' [{"transactionId": "test_transaction_id", "signedPayload":'
                     ' "test_payload"}], "manifests": []}'
                 ),
@@ -78,7 +80,7 @@ def test_docs_download(client):
             {
                 "id": "test_account_id_1",
                 "content": (
-                    '{"vaultId": "test_vault_id", "accounts": [{"accountId":'
+                    '{"vaultId": "vault_id", "accounts": [{"accountId":'
                     ' "test_account_id_1"}], "transactions": [], "manifests": []}'
                 ),
                 "metadata": "",
@@ -86,7 +88,7 @@ def test_docs_download(client):
             {
                 "id": "test_account_id_2",
                 "content": (
-                    '{"vaultId": "test_vault_id", "accounts": [{"accountId":'
+                    '{"vaultId": "vault_id", "accounts": [{"accountId":'
                     ' "test_account_id_2"}], "transactions": [], "manifests": []}'
                 ),
                 "metadata": "",
@@ -94,7 +96,7 @@ def test_docs_download(client):
             {
                 "id": "test_manifest_id",
                 "content": (
-                    '{"vaultId": "test_vault_id", "accounts": [], "transactions": [],'
+                    '{"vaultId": "vault_id", "accounts": [], "transactions": [],'
                     ' "manifests": [{"manifestId": "test_manifest_id"}]}'
                 ),
                 "metadata": "",
@@ -187,6 +189,7 @@ def test_encrypted_download(seed, client):
 
     # bulk_download encrypts only signedPayload fields inside the JSON;
     # the outer content is still valid JSON — only the ciphered field needs decrypting.
+    # vaultId must be the operator-configured value, not whatever the SaaS response returns.
     doc0 = json.loads(response.json["documents"][0]["content"])
     assert response.json["documents"][0]["id"] == "test_transaction_id"
     assert (
@@ -197,16 +200,19 @@ def test_encrypted_download(seed, client):
 
     doc1 = json.loads(response.json["documents"][1]["content"])
     assert response.json["documents"][1]["id"] == "test_account_id_1"
+    assert doc1["vaultId"] == "vault_id"
     assert doc1["accounts"][0]["accountId"] == "test_account_id_1"
     assert response.json["documents"][1]["metadata"] == ""
 
     doc2 = json.loads(response.json["documents"][2]["content"])
     assert response.json["documents"][2]["id"] == "test_account_id_2"
+    assert doc2["vaultId"] == "vault_id"
     assert doc2["accounts"][0]["accountId"] == "test_account_id_2"
     assert response.json["documents"][2]["metadata"] == ""
 
     doc3 = json.loads(response.json["documents"][3]["content"])
     assert response.json["documents"][3]["id"] == "test_manifest_id"
+    assert doc3["vaultId"] == "vault_id"
     assert doc3["manifests"][0]["manifestId"] == "test_manifest_id"
     assert response.json["documents"][3]["metadata"] == ""
 
@@ -657,3 +663,74 @@ def test_docs_upload_respects_custom_batch_size(batch_upload_size, client):
             batch_sizes.append(len(accounts))
 
         assert batch_sizes == [5, 5, 2]
+
+
+def test_docs_download_mismatched_vault_id_uses_operator_id(client):
+    """SaaS response returning a different vaultId than the operator-configured
+    value must NOT be trusted — the embedded vaultId must always be the
+    operator-configured value (from VAULTID env), never the SaaS-supplied one."""
+    token_url = "https://hmz_auth_hostname/token"
+    prepared_url = "https://hmz_api_hostname/v1/vaults/vault_id/operations/prepared"
+
+    with requests_mock.mock() as m:
+        m.post(token_url, json={"access_token": "test_token"}, status_code=200)
+        m.get(
+            prepared_url,
+            json={
+                "vaultId": "ATTACKER_CONTROLLED_ID",   # SaaS returns a different vault id
+                "transactions": [
+                    {"transactionId": "tx1", "signedPayload": "payload1"}
+                ],
+                "accounts": [],
+                "manifests": [],
+            },
+        )
+
+        response = client.get(
+            "api/frontend/v1alpha1/documents",
+            headers={
+                "X-SSL-CERT": component_cert,
+                "X-SSL-CLIENT-VERIFY": "SUCCESS",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json["count"] == 1
+    doc = json.loads(response.json["documents"][0]["content"])
+    # Must be the operator-configured id, never the SaaS-supplied one
+    assert doc["vaultId"] == "vault_id"
+    assert doc["vaultId"] != "ATTACKER_CONTROLLED_ID"
+
+
+def test_docs_download_missing_vault_id_uses_operator_id(client):
+    """When the SaaS response omits vaultId entirely, the embedded value must
+    still be the operator-configured id, not empty/None."""
+    token_url = "https://hmz_auth_hostname/token"
+    prepared_url = "https://hmz_api_hostname/v1/vaults/vault_id/operations/prepared"
+
+    with requests_mock.mock() as m:
+        m.post(token_url, json={"access_token": "test_token"}, status_code=200)
+        m.get(
+            prepared_url,
+            json={
+                # vaultId field intentionally omitted
+                "transactions": [
+                    {"transactionId": "tx1", "signedPayload": "payload1"}
+                ],
+                "accounts": [],
+                "manifests": [],
+            },
+        )
+
+        response = client.get(
+            "api/frontend/v1alpha1/documents",
+            headers={
+                "X-SSL-CERT": component_cert,
+                "X-SSL-CLIENT-VERIFY": "SUCCESS",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json["count"] == 1
+    doc = json.loads(response.json["documents"][0]["content"])
+    assert doc["vaultId"] == "vault_id"

@@ -17,12 +17,5 @@
 
 cp -r /oso-root/"${COMPONENT}"/*    /app-root
 
-if [ "${DEBUG}" == "true" ]; then
-	echo "${SSH_PUBKEY}" >"${HOME}/.ssh/authorized_keys"
-        sed -ie 's/#Port 22/Port '"$SSH_PORT"'/g' /etc/ssh/sshd_config
-else
-	export DEBUG="false"
-fi
-
 umask 0007
 /app-root/entrypoints/entrypoint.sh
