@@ -20,10 +20,6 @@ from functools import cached_property
 import sys
 import json
 import logging
-import os
-import pathlib
-import re
-import shutil
 
 from typing import List, cast, Literal
 
@@ -131,54 +127,9 @@ class FBPlugin(PluginProtocol):
         signing_server = cast(
             SigningServerAddon, current_oso_plugin().addons["SigningServer"]
         )
-        rewrapped_key_ids = self._rewrap_keystore(
-            signing_server, mk_rotation_request_id
-        )
+        rewrapped_key_ids = signing_server.rewrap_keystore(mk_rotation_request_id)
         self.signing_error = None
         return rewrapped_key_ids
-
-    def _rewrap_keystore(
-        self, signing_server: SigningServerAddon, mk_rotation_request_id: str
-    ) -> List[str]:
-        """Re-wrap every private-key blob in the keystore; safe to retry.
-
-        While the rotation runs, original blobs are backed up under
-        ``.mk_rotation/<mk_rotation_request_id>/`` so a retry rewraps the
-        original, never an already-rewrapped blob. The backups are deleted
-        once every key is rewrapped. Returns the rewrapped key IDs.
-        """
-        keystore = self._keystore_path()
-        backup = _rotation_dir(keystore, mk_rotation_request_id)
-
-        rewrapped_ids: List[str] = []
-        for key_type in KeyType:
-            for key_id in signing_server.list_keys(key_type):
-                key_path = pathlib.Path(key_type.name, f"{key_id}.key")
-                logger.info(f"Rewrapping key '{key_id}'")
-                _rewrap_key_file(signing_server, keystore / key_path, backup / key_path)
-                rewrapped_ids.append(key_id)
-
-        # Done: drop this rotation's backups and any left by a failed one.
-        # Keys are already rewrapped, so a cleanup failure must not fail it.
-        try:
-            shutil.rmtree(backup.parent)
-        except FileNotFoundError:
-            pass
-        except OSError as e:
-            logger.warning(f"Could not delete rotation backups: {e}")
-
-        logger.info(f"Rewrap completed: {len(rewrapped_ids)} key(s)")
-        return rewrapped_ids
-
-    @staticmethod
-    def _keystore_path() -> pathlib.Path:
-        """Keystore root from the SigningServer addon config."""
-        addon_cfg = next(
-            a
-            for a in current_oso_plugin().config.addons
-            if a.type.NAME == "SigningServer"
-        )
-        return pathlib.Path(addon_cfg.keystore_path)
 
     @cached_property
     def mode(self) -> Literal["frontend", "backend"]:
@@ -446,42 +397,3 @@ def infer_response_type(message_type: RequestType) -> ResponseType:
 
         case RequestType.KEY_LINK_TX_SIGN_REQUEST:
             return ResponseType.KEY_LINK_TX_SIGN_RESPONSE
-
-
-def _atomic_write(path: pathlib.Path, data: bytes) -> None:
-    """Replace ``path`` with ``data`` so a crash never leaves it half-written."""
-    tmp = path.with_name(f"{path.name}.tmp")
-    with open(tmp, "wb") as f:
-        f.write(data)
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp, path)
-    # Persist the rename itself, not just the file contents.
-    dir_fd = os.open(path.parent, os.O_RDONLY)
-    try:
-        os.fsync(dir_fd)
-    finally:
-        os.close(dir_fd)
-
-
-_MK_ROTATION_REQUEST_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
-
-
-def _rotation_dir(keystore: pathlib.Path, mk_rotation_request_id: str) -> pathlib.Path:
-    """Backup directory for the request, after checking the ID is a safe name."""
-    # mk_rotation_request_id becomes a directory name: no path separators or "..".
-    if not _MK_ROTATION_REQUEST_ID.fullmatch(mk_rotation_request_id):
-        raise ValueError(f"Invalid mk_rotation_request_id {mk_rotation_request_id!r}")
-    return keystore / ".mk_rotation" / mk_rotation_request_id
-
-
-def _rewrap_key_file(
-    signing_server: SigningServerAddon,
-    key_file: pathlib.Path,
-    orig: pathlib.Path,
-) -> None:
-    """Back up ``key_file`` once to ``orig``, then rewrap ``orig`` into it."""
-    if not orig.exists():
-        orig.parent.mkdir(parents=True, exist_ok=True)
-        _atomic_write(orig, key_file.read_bytes())
-    _atomic_write(key_file, signing_server.rewrap_key(orig.read_bytes()))

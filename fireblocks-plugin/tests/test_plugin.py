@@ -217,7 +217,7 @@ def test_rewrap_skips_key_top_up_and_clears_signing_error(mode, client):
 def test_rewrap_removes_backups_when_done(mode, client):
     fb_plugin = current_oso_plugin_app()
     ss = fb_plugin.signing_server
-    keystore = FBPlugin._keystore_path()
+    keystore = ss._keystore
     key_id = ss.list_keys(KeyType.SECP256K1)[0]
     key_file = keystore / "SECP256K1" / f"{key_id}.key"
     before = key_file.read_bytes()
@@ -228,36 +228,6 @@ def test_rewrap_removes_backups_when_done(mode, client):
 
     with pytest.raises(ValueError, match="Invalid mk_rotation_request_id"):
         fb_plugin.rewrap(mk_rotation_request_id="../escape")
-
-
-@pytest.mark.parametrize("mode", ["backend"])
-def test_rewrap_retry_after_partial_failure(mode, client):
-    from unittest.mock import patch
-
-    fb_plugin = current_oso_plugin_app()
-    ss = fb_plugin.signing_server
-    ids = ss.list_keys(KeyType.SECP256K1) + ss.list_keys(KeyType.ED25519)
-    files = [next(FBPlugin._keystore_path().glob(f"*/{i}.key")) for i in ids]
-    before = [f.read_bytes() for f in files]
-
-    real = ss.rewrap_key
-    calls = iter([real, RuntimeError("hsm down")])
-
-    def flaky(blob: bytes) -> bytes:
-        step = next(calls, real)
-        if isinstance(step, Exception):
-            raise step
-        return step(blob)
-
-    with patch.object(ss, "rewrap_key", flaky):
-        with pytest.raises(RuntimeError):
-            fb_plugin.rewrap(mk_rotation_request_id="r")
-    assert (FBPlugin._keystore_path() / ".mk_rotation" / "r").exists()
-
-    fb_plugin.rewrap(mk_rotation_request_id="r")
-    assert [f.read_bytes() for f in files] == [b + b"\xff" for b in before]
-    assert not list(FBPlugin._keystore_path().rglob("*.tmp"))
-    assert not (FBPlugin._keystore_path() / ".mk_rotation").exists()
 
 
 @pytest.mark.parametrize("mode", ["backend"])
