@@ -22,10 +22,26 @@ Ripple images used:
 ## Prerequisites
 
 - [Offline Signing Orchestrator](https://www.ibm.com/docs/en/hpdaoso)
-- [Docker](https://www.docker.com/)
+- [Podman](https://podman.io/)
+- `curl` and `gpg`
+
+## Build Host Setup
+
+Run **once** on each build host or CI runner before the first build (subsequent builds do not require running this again):
+
+```bash
+cd ripple-plugin
+sudo ./setup-build-host.sh
+```
+
+To verify the setup afterwards:
+
+```bash
+podman image trust show
+```
 
 ## Building
-The OSO ripple-plugin image is required to be built on an s390x system with Docker. A sample `Dockerfile` is provided to build the plugin container image.
+The OSO ripple-plugin image is required to be built on an s390x system with Podman. A sample `Dockerfile` is provided to build the plugin container image.
 
 ### Build variables
 | Variable    | Default       | Description                    |
