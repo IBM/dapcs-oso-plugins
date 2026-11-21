@@ -109,7 +109,7 @@ Download the grep11-c16 image, copy it to the private registry, and obtain the s
     `./create-backend.sh`
 
 ## OSO Encrypted Workloads
-Within the orchestration process, OSO requires plugin workload definitions to be encrypted. When configuring OSO, the encrypted plugin workloads are specified in the FRONTEND_WORKLOADS and BACKEND_WORKLOADS OSO variables within the OSO `terraform.tfvars` file. After generating the encrypted plugin workloads using the `create_frontend.sh` and `create_backend.sh`, obtain the values for the FRONTEND_WORKLOADS and BACKEND_WORKLOADS OSO variables by running the following command from the `contracts` directory:
+Within the orchestration process, OSO requires plugin workload definitions to be encrypted. When configuring OSO, the encrypted plugin workloads are specified in the FRONTEND_WORKLOADS and BACKEND_WORKLOADS OSO variables within the OSO `terraform.tfvars` file. After generating the encrypted plugin workloads using the `create-frontend.sh` and `create-backend.sh`, obtain the values for the FRONTEND_WORKLOADS and BACKEND_WORKLOADS OSO variables by running the following command from the `contracts` directory:
 
 ### Hipersocket34
 When using an external grep11 server or crypto passthrough, `hipersocket34` for the `backend-plugin` in `BACKEND_WORKLOADS` should be set to false by setting the environment variable `HIPERSOCKET34=false` when running the `get_workloads.sh` script.
@@ -117,6 +117,17 @@ When using an external grep11 server or crypto passthrough, `hipersocket34` for 
 `./get_workloads.sh`
 
 Note: update the `env_seed` and `volume_path` within the backend workload section.
+
+## Contract security
+OSO uses a two-persona contract model. The Plugin Custodian creates the workload section using the scripts in this directory, and the OSO conductor creates the environment section separately. The two sections are only combined when the conductor hands the user-data to HPVS.
+
+Contracts are encrypted with the public CCRV encryption certificate. Encryption protects the confidentiality of the contract, but it does not prove who created the contract or whether it was changed. Because the certificate is public, anyone with write access to an encrypted workload could replace it with a workload of their own, which would then run with access to the workload volume and the GREP11 credentials.
+
+The workload section cannot be signed when it is generated, because the signing key and signature depend on the environment section, which does not exist yet. Protect the contracts operationally instead:
+
+- Allow access to the systems where contracts are created (the `frontend` and `backend` directories), stored (`output/frontend/frontend.yml` and `output/backend/user-data`) and transferred (the output of `get_workloads.sh`) only to authenticated and authorized personnel.
+- Restrict access to the LPARs to authenticated and authorized personnel only.
+- Pin all images by sha256 digest.
 
 ## Signing Key Registration Process
 
