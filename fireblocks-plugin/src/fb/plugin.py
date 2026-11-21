@@ -1,5 +1,5 @@
 #
-# (c) Copyright IBM Corp. 2024, 2025
+# (c) Copyright IBM Corp. 2024, 2026
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -116,6 +116,20 @@ class FBPlugin(PluginProtocol):
         logger.info(f"Generated Keys: '{json.dumps(all_keys_info)}'")
 
         return signing_server
+
+    def rewrap(self, mk_rotation_request_id: str) -> List[str]:
+        """Rewrap all keystore keys after an HSM master-key rotation.
+
+        Uses the addon directly: ``self.signing_server`` would first top up
+        ``min_keys`` and those fresh keys are already on the new master key.
+        """
+        logger.info(f"Rewrapping keys for MK rotation request {mk_rotation_request_id}")
+        signing_server = cast(
+            SigningServerAddon, current_oso_plugin().addons["SigningServer"]
+        )
+        rewrapped_key_ids = signing_server.rewrap_keystore(mk_rotation_request_id)
+        self.signing_error = None
+        return rewrapped_key_ids
 
     @cached_property
     def mode(self) -> Literal["frontend", "backend"]:
@@ -238,9 +252,7 @@ class FBPlugin(PluginProtocol):
                     document = V1_3.Document(
                         id=str(message.transportMetadata.requestId),
                         content=model_dump_json(message),
-                        metadata="",
                     )
-
                     docs.append(document)
 
                 self.pending_messages.clear()
@@ -252,18 +264,20 @@ class FBPlugin(PluginProtocol):
                     document = V1_3.Document(
                         id=str(message_status.requestId),
                         content=model_dump_json(message_status),
-                        metadata="",
                     )
-
                     docs.append(document)
 
                 self.signed_statuses.clear()
 
         logger.debug(f"to_oso() returning: {docs=}")
-
         return V1_3.DocumentList(documents=docs, count=len(docs))
 
     def to_isv(self, oso: V1_3.DocumentList) -> list[str]:
+        """Convert OSO document list to ISV format.
+
+        The framework strips mk_rotation documents before
+        this method is called, so the plugin only sees normal signing documents.
+        """
         logger.debug(f"entering to_isv: {oso=}")
 
         match self.mode:
@@ -271,12 +285,10 @@ class FBPlugin(PluginProtocol):
                 for doc in oso.documents:
                     try:
                         message_status = MessageStatus.model_validate_json(doc.content)
-
                     except Exception as e:
-                        logger.error("ERROR: could not validate message")
+                        logger.error("ERROR: could not validate message status")
                         logger.debug(f"Invalid doc: {doc=}, Error {e}")
                         continue
-
                     self.signed_statuses.append(message_status)
 
             case "backend":
@@ -285,19 +297,16 @@ class FBPlugin(PluginProtocol):
                         message_envelope = MessageEnvelope.model_validate_json(
                             doc.content
                         )
-
                     except Exception as e:
-                        logger.error("ERROR: could not validate message")
+                        logger.error("ERROR: could not validate message envelope")
                         logger.debug(f"Invalid doc: {doc=}, Error {e}")
                         continue
 
                     message_status = self.sign(message_envelope)
-
                     logger.debug(
                         "Appending signed message status:"
                         f" {model_dump_json(message_status)}"
                     )
-
                     self.signed_statuses.append(message_status)
 
         return ["OK"]
