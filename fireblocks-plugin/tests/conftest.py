@@ -1,5 +1,5 @@
 #
-# (c) Copyright IBM Corp. 2024, 2025
+# (c) Copyright IBM Corp. 2024, 2026
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -326,6 +326,12 @@ def grpc_stub_mock(secp256k1_key_pair, ed25519_key_pair):
                     pkcs11.Mechanism._VENDOR_DEFINED + 0x1001C,
                 ]
             )
+
+        def RewrapKeyBlob(self, request: server_pb2.RewrapKeyBlobRequest):
+            # Echo back the same blob with a sentinel byte appended so tests
+            # can verify the new blob differs from the original.
+            rewrapped = request.WrappedKeyBytes + b"\xff"
+            return server_pb2.RewrapKeyBlobResponse(RewrappedKeyBytes=rewrapped)
 
     return MockCryptoStub
 
